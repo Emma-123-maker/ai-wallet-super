@@ -1,68 +1,29 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Emma Wallet - Admin HQ V3 FINAL</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-</head><body class="bg-black text-white min-h-screen p-4">
-<div class="max-w-6xl mx-auto">
-<h1 class="text-2xl font-black">👑 Founder HQ V3 - FINAL</h1>
-<p id="conn" class="text-xs text-zinc-500 mb-3">Not connected</p>
-<div class="grid grid-cols-3 gap-2 mb-4">
-<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[10px] text-zinc-400">Auth Users</p><p id="uCount" class="text-xl font-bold">-</p></div>
-<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[10px] text-zinc-400">Wallets / Balance</p><p id="bal" class="text-xl font-bold">₦ -</p></div>
-<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[10px] text-zinc-400">Tickets</p><p id="tCount" class="text-xl font-bold">-</p></div>
-</div>
-<div class="flex gap-2 mb-3 flex-wrap">
-<input id="supaUrl" placeholder="https://hhrcnxwnyisckttfylgq.supabase.co" class="flex-1 bg-zinc-900 p-3 rounded-xl text-xs min-w-[200px]">
-<input id="supaKey" placeholder="sb_publishable_..." class="flex-1 bg-zinc-900 p-3 rounded-xl text-xs min-w-[200px]">
-<input id="serviceKey" placeholder="sb_secret_... tap eye icon" class="flex-1 bg-zinc-900 border-2 border-yellow-500 p-3 rounded-xl text-xs min-w-[200px]">
-<button onclick="connect()" class="bg-white text-black px-5 py-3 rounded-xl font-bold text-xs">Connect</button>
-</div>
-<button onclick="verifyAllUsers()" class="w-full bg-yellow-400 text-black p-3 rounded-xl font-black mb-4 text-sm">✅ VERIFY ALL WAITING NOW</button>
-<div class="bg-zinc-900 rounded-2xl p-3 mb-4">
-<h2 class="font-bold text-sm mb-2">🔐 Auth Users - Your 2 users will show here</h2>
-<div id="authList" class="space-y-2 max-h-[50vh] overflow-auto text-xs">Paste keys + Connect</div>
-<button onclick="loadAuthUsers()" class="mt-3 bg-zinc-800 px-3 py-2 rounded text-xs">🔄 Refresh Auth Users</button>
-<p id="debug" class="text-[9px] text-zinc-600 mt-2 break-all"></p>
-</div>
-<div class="grid md:grid-cols-2 gap-3">
-<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">🆘 Tickets</h2><div id="tickets" class="text-xs"></div></div>
-<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">💰 Wallets</h2><div id="wallets" class="text-xs"></div><div id="txs" class="mt-4 text-[11px]"></div></div>
-</div>
-</div>
-<script>
-let supa=null, supaAdmin=null;
-const $=id=>document.getElementById(id);
-['adm_url','adm_key','adm_service'].forEach((k,i)=>{const v=localStorage.getItem(k); if(v) [ $('supaUrl'),$('supaKey'),$('serviceKey')][i].value=v;});
-if($('supaUrl').value && $('supaKey').value) connect();
-async function connect(){
- const url=$('supaUrl').value.trim(), key=$('supaKey').value.trim(), sKey=$('serviceKey').value.trim();
- if(!url||!key) return alert('Need URL + publishable');
- localStorage.setItem('adm_url',url); localStorage.setItem('adm_key',key); if(sKey) localStorage.setItem('adm_service',sKey);
- supa=supabase.createClient(url,key);
- supaAdmin=sKey?supabase.createClient(url,sKey):supa;
- $('conn').textContent='✅ Connected to '+url;
- $('debug').textContent='Clients ready. Publishable length:'+key.length+' Secret length:'+(sKey?sKey.length:0);
- loadAuthUsers(); loadWallets(); loadTickets();
-}
-async function loadAuthUsers(){
- const url=$('supaUrl').value.trim(), sKey=$('serviceKey').value.trim();
- if(!sKey) return $('authList').innerHTML='<span class=text-yellow-400>Paste sb_secret_ in yellow box</span>';
- $('authList').innerHTML='Loading auth users...';
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V4 COMPLETE</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head><body class="bg-black text-white p-4"><div class="max-w-3xl mx-auto"><h1 class="text-xl font-black">👑 HQ V4 - COMPLETE FIX</h1><p id="conn" class="text-xs text-zinc-500 mb-3">Paste keys below</p><input id="u" placeholder="https://hhrcnxwnyisckttfylgq.supabase.co" class="w-full bg-zinc-900 p-3 rounded-xl text-xs mb-2"><input id="k" placeholder="anon eyJ... (Legacy anon key)" class="w-full bg-zinc-900 p-3 rounded-xl text-xs mb-2"><input id="s" placeholder="service_role eyJ... (Legacy service key - LONGER)" class="w-full bg-zinc-900 border-2 border-yellow-500 p-3 rounded-xl text-xs mb-2"><button onclick="go()" class="w-full bg-white text-black p-3 rounded-xl font-bold mb-2">Connect + Load Users</button><button onclick="verifyAll()" class="w-full bg-yellow-400 text-black p-3 rounded-xl font-black mb-4">✅ VERIFY ALL 2 WAITING USERS</button><div id="list" class="bg-zinc-900 p-3 rounded-xl text-xs min-h-[150px]">Paste 3 keys then Connect</div><div id="wal" class="bg-zinc-900 p-3 rounded-xl text-xs mt-3"></div><p id="log" class="text-[9px] text-zinc-600 mt-2 break-all"></p></div><script>
+let adm=null; const $=id=>document.getElementById(id);
+const saved=JSON.parse(localStorage.getItem('hq4')||'{}'); if(saved.u) $('u').value=saved.u; if(saved.k) $('k').value=saved.k; if(saved.s) $('s').value=saved.s;
+if(saved.u) go();
+async function go(){
+ const u=$('u').value.trim(); const k=$('k').value.trim(); const s=$('s').value.trim();
+ if(!u||!k||!s) return alert('Paste all 3 boxes. Use LEGACY keys.');
+ if(u.includes('fyigg')) return alert('URL TYPO! Use hhrcnxwnyisckttfylgq not fyigg');
+ localStorage.setItem('hq4',JSON.stringify({u,k,s}));
+ $('conn').textContent='Connecting to '+u+'...'; $('list').textContent='Loading...';
  try{
-  const r=await fetch(url+'/auth/v1/admin/users?page=1&per_page=100',{headers:{apikey:sKey,Authorization:'Bearer '+sKey}});
-  const j=await r.json();
-  $('debug').textContent='Auth API status:'+r.status+' -> '+JSON.stringify(j).substring(0,300);
-  if(!r.ok) throw new Error(j.msg||j.error||'API error '+r.status);
-  const users=j.users||j||[];
-  $('uCount').textContent=users.length;
-  if(!users.length){ $('authList').innerHTML='API returned 0. Go to Supabase Dashboard > Auth > Users > manually Confirm email for your 2 users. Then they can login.'; return; }
-  $('authList').innerHTML=users.map(u=>`<div class="flex justify-between bg-black p-2 rounded border ${!u.email_confirmed_at?'border-yellow-600':'border-zinc-800'}"><div><b class="${!u.email_confirmed_at?'text-yellow-300':''}">${u.email||'no-email'}</b><div class="text-[9px] text-zinc-500">${u.id}<br>${u.email_confirmed_at?'✅ Confirmed':'⏳ WAITING'}</div></div><div class="flex gap-1">${!u.email_confirmed_at?`<button onclick="verifyOne('${u.id}')" class="bg-yellow-400 text-black px-2 py-1 rounded text-[10px] font-bold">Verify</button>`:''}<button onclick="deleteAuthUser('${u.id}')" class="bg-red-900 px-2 py-1 rounded text-[9px]">Del</button></div></div>`).join('');
- }catch(e){ $('authList').innerHTML='Error: '+e.message; $('debug').textContent=e.message; }
+   adm=supabase.createClient(u,s);
+   const {data, error} = await adm.auth.admin.listUsers({page:1, perPage:100});
+   if(error) throw error;
+   const users=data.users||[];
+   $('conn').textContent='✅ Connected! Found '+users.length+' auth users';
+   $('log').textContent='Success: '+users.length+' users';
+   if(users.length===0){ $('list').innerHTML='API returned 0 users. Check: 1) service_role key must be LEGACY service_role eyJ... 2) URL must be exact hhrcnxwnyisckttfylgq'; return; }
+   $('list').innerHTML=users.map(us=>`<div class="flex justify-between bg-black p-2 rounded mb-2 border ${!us.email_confirmed_at?'border-yellow-600':'border-zinc-800'}"><div><b class="${!us.email_confirmed_at?'text-yellow-300':''}">${us.email||'no-email'}</b><div class="text-[9px] text-zinc-500">${us.id}<br>${us.email_confirmed_at?'✅ Confirmed':'⏳ WAITING - tap Verify'}</div></div><div class="flex flex-col gap-1">${!us.email_confirmed_at?`<button onclick="verifyOne('${us.id}')" class="bg-yellow-400 text-black px-3 py-1 rounded text-[10px] font-black">Verify</button>`:''}<button onclick="delOne('${us.id}')" class="bg-red-900 px-2 py-1 rounded text-[9px]">Del</button></div></div>`).join('');
+   const {data:wallets} = await adm.from('wallets').select('*').limit(50);
+   const total=(wallets||[]).reduce((a,b)=>a+Number(b.balance||0),0);
+   $('wal').innerHTML=`<b>Wallets: ${wallets? wallets.length:0} | ₦${total.toLocaleString()}</b><br>`+(wallets||[]).map(w=>w.user_id.slice(0,8)+' ₦'+w.balance).join('<br>')||'No wallets yet (users need to login once)';
+ }catch(e){ $('list').innerHTML='❌ ERROR: '+e.message+'<br><br>USE LEGACY KEYS: Supabase Dashboard > API Keys > Top tabs click [Legacy anon, service_role] > copy anon + service_role. NOT sb_ keys.'; $('conn').textContent='❌ Failed'; $('log').textContent=e.message; }
 }
-async function verifyOne(id){const url=$('supaUrl').value.trim(),sKey=$('serviceKey').value.trim();const r=await fetch(url+'/auth/v1/admin/users/'+id,{method:'PUT',headers:{apikey:sKey,Authorization:'Bearer '+sKey,'Content-Type':'application/json'},body:JSON.stringify({email_confirm:true})});alert(r.ok?'✅ Verified!':'Failed: '+r.status);loadAuthUsers();}
-async function verifyAllUsers(){const url=$('supaUrl').value.trim();let sKey=$('serviceKey').value.trim();if(!sKey) return alert('Paste sb_secret_ first');const r=await fetch(url+'/auth/v1/admin/users?page=1&per_page=100',{headers:{apikey:sKey,Authorization:'Bearer '+sKey}});const j=await r.json();let c=0;for(let u of (j.users||[])){if(!u.email_confirmed_at){await fetch(url+'/auth/v1/admin/users/'+u.id,{method:'PUT',headers:{apikey:sKey,Authorization:'Bearer '+sKey,'Content-Type':'application/json'},body:JSON.stringify({email_confirm:true})});c++;}}alert('✅ Verified '+c+' users!');loadAuthUsers();}
-async function deleteAuthUser(id){if(!confirm('Delete?')) return;const url=$('supaUrl').value.trim(),sKey=$('serviceKey').value.trim();await fetch(url+'/auth/v1/admin/users/'+id,{method:'DELETE',headers:{apikey:sKey,Authorization:'Bearer '+sKey}});loadAuthUsers();}
-async function loadWallets(){try{const {data,error}=await supaAdmin.from('wallets').select('*').limit(100);if(error) throw error;const total=(data||[]).reduce((s,w)=>s+Number(w.balance||0),0);$('bal').textContent='₦'+total.toLocaleString()+' ('+(data?.length||0)+' wallets)';$('wallets').innerHTML=(data||[]).map(w=>`<div class="bg-black p-2 rounded flex justify-between"><span>${(w.user_id||'').slice(0,8)} ₦${w.balance}</span></div>`).join('')||'No wallets yet';}catch(e){$('wallets').innerHTML='Wallets error (run SQL fix): '+e.message;}}
-async function loadTickets(){try{const {data}=await supaAdmin.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(50);$('tCount').textContent=data?.length||0;$('tickets').innerHTML=(data||[]).map(t=>`<div class="bg-black p-2 rounded mb-1">${t.issue} - ${t.email||''}</div>`).join('')||'No tickets';}catch(e){}}
+async function verifyOne(id){ try{ const {error}=await adm.auth.admin.updateUserById(id,{email_confirm:true}); if(error) throw error; alert('✅ Verified!'); go(); }catch(e){alert('Failed: '+e.message);} }
+async function verifyAll(){ try{ const {data}=await adm.auth.admin.listUsers(); let c=0; for(let u of (data.users||[])){ if(!u.email_confirmed_at){ await adm.auth.admin.updateUserById(u.id,{email_confirm:true}); c++; } } alert('✅ Verified '+c+' users!'); go(); }catch(e){alert(e.message);} }
+async function delOne(id){ if(!confirm('Delete?')) return; await adm.auth.admin.deleteUser(id); go(); }
 </script></body></html>
