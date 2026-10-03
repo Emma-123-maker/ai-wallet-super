@@ -1,168 +1,68 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Emma Wallet - Admin HQ V2</title>
+<title>Emma Wallet - Admin HQ V3 FINAL</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-</head>
-<body class="bg-black text-white min-h-screen p-4">
+</head><body class="bg-black text-white min-h-screen p-4">
 <div class="max-w-6xl mx-auto">
-<h1 class="text-3xl font-black">👑 Founder HQ V2 - Ibadan</h1>
-<p class="text-zinc-400 text-sm mb-4" id="conn">Connecting...</p>
-<div class="grid grid-cols-3 gap-3 mb-6">
-<div class="bg-zinc-900 p-4 rounded-2xl"><p class="text-zinc-400 text-xs">Total Users</p><p id="uCount" class="text-2xl font-bold">-</p></div>
-<div class="bg-zinc-900 p-4 rounded-2xl"><p class="text-zinc-400 text-xs">Total Balance</p><p id="bal" class="text-2xl font-bold">₦ -</p></div>
-<div class="bg-zinc-900 p-4 rounded-2xl"><p class="text-zinc-400 text-xs">Open Tickets</p><p id="tCount" class="text-2xl font-bold">-</p></div>
+<h1 class="text-2xl font-black">👑 Founder HQ V3 - FINAL</h1>
+<p id="conn" class="text-xs text-zinc-500 mb-3">Not connected</p>
+<div class="grid grid-cols-3 gap-2 mb-4">
+<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[10px] text-zinc-400">Auth Users</p><p id="uCount" class="text-xl font-bold">-</p></div>
+<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[10px] text-zinc-400">Wallets / Balance</p><p id="bal" class="text-xl font-bold">₦ -</p></div>
+<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[10px] text-zinc-400">Tickets</p><p id="tCount" class="text-xl font-bold">-</p></div>
 </div>
-<div class="flex gap-2 mb-4 flex-wrap">
-<input id="supaUrl" placeholder="Supabase URL https://...supabase.co" class="flex-1 bg-zinc-900 p-3 rounded-xl text-sm min-w-[200px]">
-<input id="supaKey" placeholder="Anon Key eyJ..." class="flex-1 bg-zinc-900 p-3 rounded-xl text-sm min-w-[200px]">
-<input id="serviceKey" placeholder="Service Role Key (secret) eyJ... for Verify" class="flex-1 bg-zinc-900 border border-yellow-800 p-3 rounded-xl text-sm min-w-[200px]">
-<button onclick="connect()" class="bg-white text-black px-4 py-3 rounded-xl font-bold">Connect</button>
-<button onclick="verifyAllUsers()" class="bg-yellow-500 text-black px-4 py-3 rounded-xl font-bold text-xs">✅ Verify All Waiting</button>
+<div class="flex gap-2 mb-3 flex-wrap">
+<input id="supaUrl" placeholder="https://hhrcnxwnyisckttfylgq.supabase.co" class="flex-1 bg-zinc-900 p-3 rounded-xl text-xs min-w-[200px]">
+<input id="supaKey" placeholder="sb_publishable_..." class="flex-1 bg-zinc-900 p-3 rounded-xl text-xs min-w-[200px]">
+<input id="serviceKey" placeholder="sb_secret_... tap eye icon" class="flex-1 bg-zinc-900 border-2 border-yellow-500 p-3 rounded-xl text-xs min-w-[200px]">
+<button onclick="connect()" class="bg-white text-black px-5 py-3 rounded-xl font-bold text-xs">Connect</button>
 </div>
-<div id="authUsers" class="bg-zinc-900 rounded-2xl p-4 mb-4">
-<h2 class="font-bold mb-3">🔐 Auth Users (Waiting for verification)</h2>
-<div id="authList" class="space-y-2 max-h-[40vh] overflow-auto text-xs"></div>
-<button onclick="loadAuthUsers()" class="mt-3 bg-zinc-800 px-3 py-2 rounded text-xs">Refresh Auth Users</button>
+<button onclick="verifyAllUsers()" class="w-full bg-yellow-400 text-black p-3 rounded-xl font-black mb-4 text-sm">✅ VERIFY ALL WAITING NOW</button>
+<div class="bg-zinc-900 rounded-2xl p-3 mb-4">
+<h2 class="font-bold text-sm mb-2">🔐 Auth Users - Your 2 users will show here</h2>
+<div id="authList" class="space-y-2 max-h-[50vh] overflow-auto text-xs">Paste keys + Connect</div>
+<button onclick="loadAuthUsers()" class="mt-3 bg-zinc-800 px-3 py-2 rounded text-xs">🔄 Refresh Auth Users</button>
+<p id="debug" class="text-[9px] text-zinc-600 mt-2 break-all"></p>
 </div>
-<div class="grid md:grid-cols-2 gap-4">
-<div class="bg-zinc-900 rounded-2xl p-4">
-<h2 class="font-bold mb-3">🆘 Support Tickets - Live</h2>
-<div id="tickets" class="space-y-3 max-h-[70vh] overflow-auto"></div>
-</div>
-<div class="bg-zinc-900 rounded-2xl p-4">
-<h2 class="font-bold mb-3">💰 All Wallets</h2>
-<div id="wallets" class="space-y-2 max-h-[35vh] overflow-auto text-sm"></div>
-<h2 class="font-bold mt-6 mb-3">📜 Recent Transactions</h2>
-<div id="txs" class="space-y-2 max-h-[35vh] overflow-auto text-xs"></div>
-</div>
+<div class="grid md:grid-cols-2 gap-3">
+<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">🆘 Tickets</h2><div id="tickets" class="text-xs"></div></div>
+<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">💰 Wallets</h2><div id="wallets" class="text-xs"></div><div id="txs" class="mt-4 text-[11px]"></div></div>
 </div>
 </div>
 <script>
-let supa=null;
-const savedUrl=localStorage.getItem('adm_url');
-const savedKey=localStorage.getItem('adm_key');
-const savedService=localStorage.getItem('adm_service');
-if(savedUrl) document.getElementById('supaUrl').value=savedUrl;
-if(savedKey) document.getElementById('supaKey').value=savedKey;
-if(savedService) document.getElementById('serviceKey').value=savedService;
-if(savedUrl && savedKey) connect();
-
+let supa=null, supaAdmin=null;
+const $=id=>document.getElementById(id);
+['adm_url','adm_key','adm_service'].forEach((k,i)=>{const v=localStorage.getItem(k); if(v) [ $('supaUrl'),$('supaKey'),$('serviceKey')][i].value=v;});
+if($('supaUrl').value && $('supaKey').value) connect();
 async function connect(){
- const url=document.getElementById('supaUrl').value.trim();
- const key=document.getElementById('supaKey').value.trim();
- const sKey=document.getElementById('serviceKey').value.trim();
- if(!url||!key) return alert('Paste Supabase URL and anon key');
- localStorage.setItem('adm_url',url); localStorage.setItem('adm_key',key);
- if(sKey) localStorage.setItem('adm_service',sKey);
+ const url=$('supaUrl').value.trim(), key=$('supaKey').value.trim(), sKey=$('serviceKey').value.trim();
+ if(!url||!key) return alert('Need URL + publishable');
+ localStorage.setItem('adm_url',url); localStorage.setItem('adm_key',key); if(sKey) localStorage.setItem('adm_service',sKey);
  supa=supabase.createClient(url,key);
- document.getElementById('conn').textContent='✅ Connected: '+url;
- loadAll();
- supa.channel('tickets').on('postgres_changes',{event:'*',schema:'public',table:'support_tickets'},()=>loadTickets()).subscribe();
- if(sKey) loadAuthUsers();
+ supaAdmin=sKey?supabase.createClient(url,sKey):supa;
+ $('conn').textContent='✅ Connected to '+url;
+ $('debug').textContent='Clients ready. Publishable length:'+key.length+' Secret length:'+(sKey?sKey.length:0);
+ loadAuthUsers(); loadWallets(); loadTickets();
 }
-
 async function loadAuthUsers(){
- const url=document.getElementById('supaUrl').value.trim();
- const sKey=document.getElementById('serviceKey').value.trim();
- if(!sKey) return document.getElementById('authList').innerHTML='<p class="text-yellow-400">Paste Service Role Key above to see & verify users. Find it in Supabase → Settings → API → service_role secret</p>';
+ const url=$('supaUrl').value.trim(), sKey=$('serviceKey').value.trim();
+ if(!sKey) return $('authList').innerHTML='<span class=text-yellow-400>Paste sb_secret_ in yellow box</span>';
+ $('authList').innerHTML='Loading auth users...';
  try{
-  const res=await fetch(`${url}/auth/v1/admin/users`,{headers:{apikey:sKey,Authorization:'Bearer '+sKey}});
-  const data=await res.json();
-  const users=data.users||[];
-  const waiting=users.filter(u=>!u.email_confirmed_at);
-  document.getElementById('authList').innerHTML=users.map(u=>`
-    <div class="flex justify-between bg-black p-2 rounded border ${!u.email_confirmed_at?'border-yellow-700':'border-zinc-800'}">
-     <div><span class="${!u.email_confirmed_at?'text-yellow-400':'text-white'}">${u.email}</span> <span class="text-[10px] text-zinc-500">${!u.email_confirmed_at?'⏳ Waiting':'✅ Confirmed'}</span></div>
-     <div class="flex gap-1">
-      ${!u.email_confirmed_at?`<button onclick="verifyOne('${u.id}')" class="bg-yellow-500 text-black px-2 py-1 rounded text-[10px]">Verify</button>`:''}
-      <button onclick="deleteAuthUser('${u.id}')" class="bg-red-900 px-2 py-1 rounded text-[10px]">Delete</button>
-     </div>
-    </div>`).join('')||'No users';
- }catch(e){ document.getElementById('authList').innerHTML='Error: '+e.message; }
+  const r=await fetch(url+'/auth/v1/admin/users?page=1&per_page=100',{headers:{apikey:sKey,Authorization:'Bearer '+sKey}});
+  const j=await r.json();
+  $('debug').textContent='Auth API status:'+r.status+' -> '+JSON.stringify(j).substring(0,300);
+  if(!r.ok) throw new Error(j.msg||j.error||'API error '+r.status);
+  const users=j.users||j||[];
+  $('uCount').textContent=users.length;
+  if(!users.length){ $('authList').innerHTML='API returned 0. Go to Supabase Dashboard > Auth > Users > manually Confirm email for your 2 users. Then they can login.'; return; }
+  $('authList').innerHTML=users.map(u=>`<div class="flex justify-between bg-black p-2 rounded border ${!u.email_confirmed_at?'border-yellow-600':'border-zinc-800'}"><div><b class="${!u.email_confirmed_at?'text-yellow-300':''}">${u.email||'no-email'}</b><div class="text-[9px] text-zinc-500">${u.id}<br>${u.email_confirmed_at?'✅ Confirmed':'⏳ WAITING'}</div></div><div class="flex gap-1">${!u.email_confirmed_at?`<button onclick="verifyOne('${u.id}')" class="bg-yellow-400 text-black px-2 py-1 rounded text-[10px] font-bold">Verify</button>`:''}<button onclick="deleteAuthUser('${u.id}')" class="bg-red-900 px-2 py-1 rounded text-[9px]">Del</button></div></div>`).join('');
+ }catch(e){ $('authList').innerHTML='Error: '+e.message; $('debug').textContent=e.message; }
 }
-
-async function verifyOne(userId){
- const url=document.getElementById('supaUrl').value.trim();
- const sKey=document.getElementById('serviceKey').value.trim();
- await fetch(`${url}/auth/v1/admin/users/${userId}`,{method:'PUT',headers:{apikey:sKey,Authorization:'Bearer '+sKey,'Content-Type':'application/json'},body:JSON.stringify({email_confirm:true})});
- alert('✅ Verified!'); loadAuthUsers();
-}
-
-async function verifyAllUsers(){
- const url=document.getElementById('supaUrl').value.trim();
- let sKey=document.getElementById('serviceKey').value.trim();
- if(!sKey){ sKey=prompt('Paste SERVICE_ROLE secret key from Supabase → Settings → API'); if(!sKey) return; document.getElementById('serviceKey').value=sKey; localStorage.setItem('adm_service',sKey); }
- const res=await fetch(`${url}/auth/v1/admin/users`,{headers:{apikey:sKey,Authorization:'Bearer '+sKey}});
- const data=await res.json();
- let count=0;
- for(let u of (data.users||[])){
-  if(!u.email_confirmed_at){
-   await fetch(`${url}/auth/v1/admin/users/${u.id}`,{method:'PUT',headers:{apikey:sKey,Authorization:'Bearer '+sKey,'Content-Type':'application/json'},body:JSON.stringify({email_confirm:true})});
-   count++;
-  }
- }
- alert(`✅ Verified ${count} users!`);
- loadAuthUsers();
-}
-
-async function deleteAuthUser(id){
- if(!confirm('Delete this user?')) return;
- const url=document.getElementById('supaUrl').value.trim();
- const sKey=document.getElementById('serviceKey').value.trim();
- await fetch(`${url}/auth/v1/admin/users/${id}`,{method:'DELETE',headers:{apikey:sKey,Authorization:'Bearer '+sKey}});
- loadAuthUsers();
-}
-
-async function loadAll(){ loadTickets(); loadWallets(); loadTxs(); }
-async function loadTickets(){
- const {data} = await supa.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(100);
- document.getElementById('tCount').textContent=data?.length||0;
- document.getElementById('tickets').innerHTML=(data||[]).map(t=>`
-  <div class="bg-black p-3 rounded-xl border border-zinc-800">
-   <div class="flex justify-between"><b class="text-xs text-lime-400">${t.email||''}</b><span class="text-[10px] text-zinc-500">${new Date(t.created_at).toLocaleString()}</span></div>
-   <p class="mt-1 text-sm">${t.issue}</p>
-   <p class="text-[11px] text-zinc-500">Screen: ${t.screen||''}</p>
-   ${t.response?`<div class="mt-2 bg-green-900/30 p-2 rounded text-xs">✅ You: ${t.response}</div>`:`
-   <div class="flex gap-2 mt-2">
-    <input id="rep-${t.id}" placeholder="Type answer..." class="flex-1 bg-zinc-800 p-2 rounded text-xs">
-    <button onclick="answer('${t.id}')" class="bg-white text-black px-3 rounded text-xs font-bold">Reply</button>
-   </div>`}
-   <div class="flex gap-2 mt-2">
-    <button onclick="refund('${t.user_id}')" class="text-[11px] bg-zinc-800 px-2 py-1 rounded">Refund ₦500</button>
-    <button onclick="delTicket('${t.id}')" class="text-[11px] bg-red-900 px-2 py-1 rounded">Resolve</button>
-   </div>
-  </div>`).join('')||'<p class="text-zinc-500 text-sm">No tickets yet</p>';
-}
-async function answer(id){
- const text=document.getElementById('rep-'+id).value;
- if(!text) return;
- await supa.from('support_tickets').update({response:text}).eq('id',id);
- loadTickets();
-}
-async function delTicket(id){ await supa.from('support_tickets').delete().eq('id',id); loadTickets(); }
-async function loadWallets(){
- const {data} = await supa.from('wallets').select('*').order('balance',{ascending:false}).limit(100);
- const total=(data||[]).reduce((s,w)=>s+Number(w.balance||0),0);
- document.getElementById('bal').textContent='₦'+total.toLocaleString();
- document.getElementById('uCount').textContent=data?.length||0;
- document.getElementById('wallets').innerHTML=(data||[]).map(w=>`
-  <div class="flex justify-between bg-black p-2 rounded">
-   <span class="truncate">${w.user_id?.slice(0,6)}... ₦${w.balance}</span>
-   <button onclick="addMoney('${w.user_id}')" class="bg-lime-400 text-black px-2 rounded text-[11px]">+₦</button>
-  </div>`).join('');
-}
-async function loadTxs(){
- const {data} = await supa.from('transactions').select('*').order('created_at',{ascending:false}).limit(50);
- document.getElementById('txs').innerHTML=(data||[]).map(t=>`<div class="bg-black p-2 rounded flex justify-between"><span>${t.type} ₦${t.amount}</span><span class="text-zinc-500">${new Date(t.created_at).toLocaleTimeString()}</span></div>`).join('');
-}
-async function addMoney(uid){
- const amt=prompt('How much to add? e.g 1000');
- if(!amt) return;
- const {data:wal}=await supa.from('wallets').select('balance').eq('user_id',uid).single();
- await supa.from('wallets').update({balance:Number(wal.balance)+Number(amt)}).eq('user_id',uid);
- loadWallets();
-}
-async function refund(uid){ addMoney(uid); }
-</script>
-</body></html>
+async function verifyOne(id){const url=$('supaUrl').value.trim(),sKey=$('serviceKey').value.trim();const r=await fetch(url+'/auth/v1/admin/users/'+id,{method:'PUT',headers:{apikey:sKey,Authorization:'Bearer '+sKey,'Content-Type':'application/json'},body:JSON.stringify({email_confirm:true})});alert(r.ok?'✅ Verified!':'Failed: '+r.status);loadAuthUsers();}
+async function verifyAllUsers(){const url=$('supaUrl').value.trim();let sKey=$('serviceKey').value.trim();if(!sKey) return alert('Paste sb_secret_ first');const r=await fetch(url+'/auth/v1/admin/users?page=1&per_page=100',{headers:{apikey:sKey,Authorization:'Bearer '+sKey}});const j=await r.json();let c=0;for(let u of (j.users||[])){if(!u.email_confirmed_at){await fetch(url+'/auth/v1/admin/users/'+u.id,{method:'PUT',headers:{apikey:sKey,Authorization:'Bearer '+sKey,'Content-Type':'application/json'},body:JSON.stringify({email_confirm:true})});c++;}}alert('✅ Verified '+c+' users!');loadAuthUsers();}
+async function deleteAuthUser(id){if(!confirm('Delete?')) return;const url=$('supaUrl').value.trim(),sKey=$('serviceKey').value.trim();await fetch(url+'/auth/v1/admin/users/'+id,{method:'DELETE',headers:{apikey:sKey,Authorization:'Bearer '+sKey}});loadAuthUsers();}
+async function loadWallets(){try{const {data,error}=await supaAdmin.from('wallets').select('*').limit(100);if(error) throw error;const total=(data||[]).reduce((s,w)=>s+Number(w.balance||0),0);$('bal').textContent='₦'+total.toLocaleString()+' ('+(data?.length||0)+' wallets)';$('wallets').innerHTML=(data||[]).map(w=>`<div class="bg-black p-2 rounded flex justify-between"><span>${(w.user_id||'').slice(0,8)} ₦${w.balance}</span></div>`).join('')||'No wallets yet';}catch(e){$('wallets').innerHTML='Wallets error (run SQL fix): '+e.message;}}
+async function loadTickets(){try{const {data}=await supaAdmin.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(50);$('tCount').textContent=data?.length||0;$('tickets').innerHTML=(data||[]).map(t=>`<div class="bg-black p-2 rounded mb-1">${t.issue} - ${t.email||''}</div>`).join('')||'No tickets';}catch(e){}}
+</script></body></html>
