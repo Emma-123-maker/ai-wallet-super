@@ -1,56 +1,103 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V6 TRANSACTIONS</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V6.1 TRANSACTIONS PRO</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
 <body class="bg-black text-white p-3"><div class="max-w-7xl mx-auto">
-<h1 class="text-xl font-black">👑 HQ V6 • Transactions View</h1>
+<h1 class="text-xl font-black">👑 HQ V6.1 • Transactions Pro</h1>
+<p id="status" class="text-[10px] text-zinc-500 mb-2">Not connected - paste keys below</p>
+
 <div class="grid grid-cols-4 gap-2 my-2 text-xs">
 <div class="bg-zinc-900 p-2 rounded">USERS <b id="uC" class="block text-lg">-</b></div>
 <div class="bg-zinc-900 p-2 rounded">WALLETS <b id="wC" class="block text-lg">-</b></div>
 <div class="bg-zinc-900 p-2 rounded text-green-400">TOTAL ₦ <b id="tot" class="block text-lg">0</b></div>
 <div class="bg-zinc-900 p-2 rounded">TXs <b id="txC" class="block text-lg">-</b></div>
 </div>
-<div class="flex gap-2 mb-2"><input id="u" class="flex-1 bg-zinc-900 p-2 rounded text-[10px]" placeholder="https://...supabase.co"><input id="k" class="flex-1 bg-zinc-900 p-2 rounded text-[10px]" placeholder="anon eyJ..."><input id="s" class="flex-1 bg-zinc-900 border border-yellow-500 p-2 rounded text-[10px]" placeholder="service_role eyJ..."><button onclick="go()" class="bg-white text-black px-4 rounded font-bold text-xs">Connect</button></div>
+
+<div class="flex gap-2 mb-2">
+<input id="u" class="flex-1 bg-zinc-900 p-3 rounded-xl text-[10px]" placeholder="https://...supabase.co">
+<input id="k" class="flex-1 bg-zinc-900 p-3 rounded-xl text-[10px]" placeholder="anon eyJ...">
+<input id="s" class="flex-1 bg-zinc-900 border-2 border-yellow-500 p-3 rounded-xl text-[10px]" placeholder="service_role eyJ... LONGER">
+<button onclick="go()" class="bg-white text-black px-5 py-2 rounded-xl font-bold text-xs">Connect</button>
+</div>
 
 <div class="bg-zinc-900 rounded-xl p-3 mb-3">
 <div class="flex gap-2 flex-wrap mb-2">
-<input id="fEmail" placeholder="fund email" class="bg-black p-2 rounded text-xs flex-1"><input id="fAmt" type="number" placeholder="5000" class="bg-black p-2 rounded text-xs w-24">
-<button onclick="fund(1)" class="bg-green-500 text-black px-3 py-1 rounded font-bold text-xs">+ CREDIT</button><button onclick="fund(-1)" class="bg-red-500 px-3 py-1 rounded font-bold text-xs">- DEBIT</button>
-<button onclick="exportCSV()" class="bg-zinc-700 px-3 py-1 rounded text-xs">📥 Export CSV</button>
+<input id="fEmail" placeholder="user email to fund" class="bg-black p-3 rounded-xl text-xs flex-1 min-w-[140px]">
+<input id="fAmt" type="number" placeholder="5000" class="bg-black p-3 rounded-xl text-xs w-24">
+<button onclick="fund(1)" class="bg-green-500 text-black px-4 py-2 rounded-xl font-bold text-xs">+ CREDIT</button>
+<button onclick="fund(-1)" class="bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-xs">- DEBIT</button>
+<button onclick="exportCSV()" class="bg-zinc-700 px-3 py-2 rounded-xl text-xs">📥 CSV</button>
+<button onclick="loadAll()" class="bg-zinc-800 px-3 py-2 rounded-xl text-xs">🔄 Refresh</button>
 </div>
-<div class="flex gap-2 flex-wrap">
-<input id="txSearch" oninput="renderTxs()" placeholder="Search tx by email/type" class="bg-black p-2 rounded text-xs flex-1">
-<select id="txType" onchange="renderTxs()" class="bg-black p-2 rounded text-xs"><option value="">All Types</option><option>credit</option><option>debit</option><option>transfer</option><option>airtime</option><option>data</option></select>
-<span class="text-[10px] text-zinc-500">Credit: <b id="sumC" class="text-green-400">0</b> | Debit: <b id="sumD" class="text-red-400">0</b></span>
+<div class="flex gap-2 flex-wrap items-center">
+<input id="txSearch" oninput="renderTxs()" placeholder="Search by email, type, desc..." class="bg-black p-2 rounded-xl text-xs flex-1 min-w-[160px]">
+<select id="txType" onchange="renderTxs()" class="bg-black p-2 rounded-xl text-xs">
+<option value="">All Types</option><option value="credit">credit</option><option value="debit">debit</option><option value="transfer">transfer</option><option value="airtime">airtime</option><option value="data">data</option>
+</select>
+<span class="text-[10px]">IN: <b id="sumC" class="text-green-400">₦0</b> | OUT: <b id="sumD" class="text-red-400">₦0</b></span>
 </div>
 </div>
 
-<div id="list" class="bg-zinc-900 rounded-xl p-3 text-xs max-h-[80vh] overflow-auto">Connect first...</div>
+<div id="list" class="bg-zinc-900 rounded-xl p-3 text-xs min-h-[40vh]">Connect first...</div>
+<p id="err" class="text-[9px] text-red-400 mt-2 break-all"></p>
 </div>
 <script>
-let adm=null, usersMap={}, allTxs=[], allUsers=[]; const $=id=>document.getElementById(id);
-let saved=JSON.parse(localStorage.getItem('hq6')||'{}'); if(saved.u) $('u').value=saved.u; if(saved.k) $('k').value=saved.k; if(saved.s) $('s').value=saved.s;
-if(saved.u) go();
-async function go(){ const u=$('u').value.trim(),k=$('k').value.trim(),s=$('s').value.trim(); if(!u||!k||!s) return alert('paste 3 keys'); localStorage.setItem('hq6',JSON.stringify({u,k,s})); adm=supabase.createClient(u,s); loadAll(); }
+const DEFAULT_URL="https://hhrcnxwnyisckttfylgq.supabase.co";
+let adm=null, usersMap={}, allTxs=[], allUsers=[];
+const $=id=>document.getElementById(id);
+let saved=JSON.parse(localStorage.getItem('hq61')||'{}');
+$('u').value=saved.u||DEFAULT_URL; if(saved.k) $('k').value=saved.k; if(saved.s) $('s').value=saved.s;
+if(saved.u && saved.k && saved.s) { setTimeout(go,300); }
+
+async function go(){
+  const u=$('u').value.trim()||DEFAULT_URL, k=$('k').value.trim(), s=$('s').value.trim();
+  if(!k||!s) return alert('Paste anon + service_role');
+  localStorage.setItem('hq61',JSON.stringify({u,k,s}));
+  $('status').textContent='Connecting to '+u+'...';
+  try{
+    adm=supabase.createClient(u,s);
+    $('status').textContent='✅ Connected: '+u;
+    await loadAll();
+  }catch(e){ $('err').textContent=e.message; $('status').textContent='❌ '+e.message; }
+}
 async function loadAll(){
  try{
-  const {data:uData}=await adm.auth.admin.listUsers({page:1,perPage:100}); allUsers=uData.users||[]; usersMap={}; allUsers.forEach(x=>usersMap[x.id]=x.email); $('uC').textContent=allUsers.length;
-  const {data:wData}=await adm.from('wallets').select('*'); $('wC').textContent=wData?.length||0; $('tot').textContent=(wData||[]).reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString();
-  const {data:txData}=await adm.from('transactions').select('*').order('created_at',{ascending:false}).limit(200); allTxs=txData||[]; $('txC').textContent=allTxs.length; renderTxs();
- }catch(e){ $('list').innerHTML=e.message; }
+  $('err').textContent='';
+  const {data:uData, error:uErr}=await adm.auth.admin.listUsers({page:1,perPage:100});
+  if(uErr) throw uErr;
+  allUsers=uData.users||[]; usersMap={}; allUsers.forEach(x=>usersMap[x.id]=x.email); $('uC').textContent=allUsers.length;
+
+  const {data:wData, error:wErr}=await adm.from('wallets').select('*');
+  if(wErr){ $('wC').textContent='No table'; } else { $('wC').textContent=wData?.length||0; $('tot').textContent='₦'+(wData||[]).reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString(); }
+
+  const {data:txData, error:txErr}=await adm.from('transactions').select('*').order('created_at',{ascending:false}).limit(200);
+  if(txErr){ $('list').innerHTML='<div class="text-yellow-400">No transactions table yet. Run the SQL I gave you in Supabase SQL Editor.</div>'; $('txC').textContent='0'; allTxs=[]; }
+  else { allTxs=txData||[]; $('txC').textContent=allTxs.length; renderTxs(); }
+ }catch(e){ $('err').textContent=e.message; $('list').innerHTML='Error: '+e.message; }
 }
 function renderTxs(){
- let q=($('txSearch').value||'').toLowerCase(), typ=$('txType').value, filtered=allTxs.filter(t=>{
-  let email=(usersMap[t.user_id]||t.user_id||'').toLowerCase(); return (!q||email.includes(q)||(t.type||'').toLowerCase().includes(q)||(t.description||'').toLowerCase().includes(q)) && (!typ||t.type===typ);
+ let q=($('txSearch').value||'').toLowerCase(), typ=$('txType').value;
+ let filtered=allTxs.filter(t=>{
+  let email=(usersMap[t.user_id]||t.user_id||'').toLowerCase();
+  return (!q||email.includes(q)||(t.type||'').toLowerCase().includes(q)||(t.description||'').toLowerCase().includes(q)) && (!typ||t.type===typ);
  });
- let sumC=0,sumD=0; filtered.forEach(t=>{ if(t.type==='credit') sumC+=Number(t.amount); else if(t.type==='debit') sumD+=Number(t.amount); });
+ let sumC=0,sumD=0; filtered.forEach(t=>{ if(t.type==='credit') sumC+=Number(t.amount); else if(t.type==='debit'||t.type==='transfer'||t.type==='airtime'||t.type==='data') sumD+=Number(t.amount); });
  $('sumC').textContent='₦'+sumC.toLocaleString(); $('sumD').textContent='₦'+sumD.toLocaleString();
- $('list').innerHTML=filtered.map(t=>`<div class="flex justify-between bg-black p-2 rounded mb-1 border-l-4 ${t.type==='credit'?'border-green-500':'border-red-500'}"><div><b class="${t.type==='credit'?'text-green-400':'text-red-400'}">${t.type.toUpperCase()} ₦${Number(t.amount).toLocaleString()}</b><div class="text-[10px]">${usersMap[t.user_id]||t.user_id.slice(0,8)} • ${t.description||''}</div></div><div class="text-[9px] text-zinc-500 text-right">${new Date(t.created_at).toLocaleString()}<br><span class="bg-zinc-800 px-1 rounded">${t.status||'success'}</span></div></div>`).join('')||'No transactions yet - credit a user to create first tx';
+ $('list').innerHTML=filtered.map(t=>`<div class="flex justify-between bg-black p-3 rounded-xl mb-2 border-l-4 ${t.type==='credit'?'border-green-500':'border-red-500'}"><div><b class="${t.type==='credit'?'text-green-400':'text-red-300'}">${(t.type||'').toUpperCase()} ₦${Number(t.amount).toLocaleString()}</b><div class="text-[11px] text-zinc-300">${usersMap[t.user_id]||t.user_id.slice(0,8)} • ${t.description||''}</div></div><div class="text-[9px] text-zinc-500 text-right">${new Date(t.created_at).toLocaleString()}<br><span class="bg-zinc-800 px-2 py-1 rounded text-[8px]">${t.status||'success'}</span></div></div>`).join('')||'<div class="text-zinc-500">No transactions yet - use +CREDIT to create first one</div>';
 }
 async function fund(dir){
- let em=$('fEmail').value.trim(), amt=Number($('fAmt').value); if(!em||!amt) return alert('email + amount'); let uid=em.includes('@')? allUsers.find(u=>u.email===em)?.id : em; if(!uid) return alert('user not found'); if(em.includes('@')&&!uid) return alert('email not in users list - connect first');
- let {data:wal}=await adm.from('wallets').select('*').eq('user_id',uid).single(); let newBal=dir>0? (Number(wal?.balance||0)+amt) : Math.max(0,Number(wal?.balance||0)-amt);
- if(!wal) await adm.from('wallets').insert({user_id:uid,balance:newBal}); else await adm.from('wallets').update({balance:newBal}).eq('user_id',uid);
- await adm.from('transactions').insert({user_id:uid,type:dir>0?'credit':'debit',amount:amt,description: dir>0?'HQ V6 Admin Credit':'HQ V6 Admin Debit'});
- alert((dir>0?'Credited ':'Debited ')+'₦'+amt); loadAll();
+ let em=$('fEmail').value.trim(), amt=Number($('fAmt').value); if(!em||!amt) return alert('Enter email + amount');
+ let uid=em.includes('@')? allUsers.find(u=>u.email.toLowerCase()===em.toLowerCase())?.id : em;
+ if(!uid) return alert('User not found - make sure you Connected first and email is correct');
+ try{
+   let {data:wal}=await adm.from('wallets').select('*').eq('user_id',uid).single();
+   let newBal=dir>0? (Number(wal?.balance||0)+amt) : Math.max(0,Number(wal?.balance||0)-amt);
+   if(!wal) { await adm.from('wallets').insert({user_id:uid,balance:newBal}); } else { await adm.from('wallets').update({balance:newBal}).eq('user_id',uid); }
+   await adm.from('transactions').insert({user_id:uid,type:dir>0?'credit':'debit',amount:amt,description: dir>0?'HQ V6.1 Admin Credit':'HQ V6.1 Admin Debit'});
+   alert((dir>0?'Credited ':'Debited ')+'₦'+amt+' to '+(usersMap[uid]||uid)); await loadAll();
+ }catch(e){ alert(e.message); $('err').textContent=e.message; }
 }
-function exportCSV(){ let csv='email,type,amount,description,date\n'+allTxs.map(t=>`"${usersMap[t.user_id]||t.user_id}",${t.type},${t.amount},"${(t.description||'').replace(/"/g,'')}",${t.created_at}`).join('\n'); let blob=new Blob([csv],{type:'text/csv'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='transactions.csv'; a.click(); }
+function exportCSV(){
+  if(!allTxs.length) return alert('No tx to export');
+  let csv='email,user_id,type,amount,description,date\n'+allTxs.map(t=>`"${usersMap[t.user_id]||''}","${t.user_id}",${t.type},${t.amount},"${(t.description||'').replace(/"/g,'')}",${t.created_at}`).join('\n');
+  let blob=new Blob([csv],{type:'text/csv'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='transactions_'+Date.now()+'.csv'; a.click();
+}
 </script></body></html>
