@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Emma Wallet - Admin HQ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-black text-white min-h-screen p-4">
+<div class="max-w-6xl mx-auto">
+<h1 class="text-3xl font-black">👑 Founder HQ - Ibadan</h1>
+<p class="text-zinc-400 text-sm mb-4" id="conn">Connecting...</p>
+<div class="grid grid-cols-3 gap-3 mb-6">
+<div class="bg-zinc-900 p-4 rounded-2xl"><p class="text-zinc-400 text-xs">Total Users</p><p id="uCount" class="text-2xl font-bold">-</p></div>
+<div class="bg-zinc-900 p-4 rounded-2xl"><p class="text-zinc-400 text-xs">Total Balance</p><p id="bal" class="text-2xl font-bold">₦ -</p></div>
+<div class="bg-zinc-900 p-4 rounded-2xl"><p class="text-zinc-400 text-xs">Open Tickets</p><p id="tCount" class="text-2xl font-bold">-</p></div>
+</div>
+<div class="flex gap-2 mb-4 flex-wrap">
+<input id="supaUrl" placeholder="Supabase URL https://...supabase.co" class="flex-1 bg-zinc-900 p-3 rounded-xl text-sm min-w-[200px]">
+<input id="supaKey" placeholder="Anon Key eyJ..." class="flex-1 bg-zinc-900 p-3 rounded-xl text-sm min-w-[200px]">
+<button onclick="connect()" class="bg-white text-black px-4 py-3 rounded-xl font-bold">Connect</button>
+</div>
+<div class="grid md:grid-cols-2 gap-4">
+<div class="bg-zinc-900 rounded-2xl p-4">
+<h2 class="font-bold mb-3">🆘 Support Tickets - Live</h2>
+<div id="tickets" class="space-y-3 max-h-[70vh] overflow-auto"></div>
+</div>
+<div class="bg-zinc-900 rounded-2xl p-4">
+<h2 class="font-bold mb-3">💰 All Wallets</h2>
+<div id="wallets" class="space-y-2 max-h-[35vh] overflow-auto text-sm"></div>
+<h2 class="font-bold mt-6 mb-3">📜 Recent Transactions</h2>
+<div id="txs" class="space-y-2 max-h-[35vh] overflow-auto text-xs"></div>
+</div>
+</div>
+</div>
+<script>
+let supa=null;
+const savedUrl=localStorage.getItem('adm_url');
+const savedKey=localStorage.getItem('adm_key');
+if(savedUrl) document.getElementById('supaUrl').value=savedUrl;
+if(savedKey) document.getElementById('supaKey').value=savedKey;
+if(savedUrl && savedKey) connect();
+async function connect(){
+ const url=document.getElementById('supaUrl').value.trim();
+ const key=document.getElementById('supaKey').value.trim();
+ if(!url||!key) return alert('Paste Supabase URL and anon key');
+ localStorage.setItem('adm_url',url); localStorage.setItem('adm_key',key);
+ supa=supabase.createClient(url,key);
+ document.getElementById('conn').textContent='✅ Connected: '+url;
+ loadAll();
+ supa.channel('tickets').on('postgres_changes',{event:'*',schema:'public',table:'support_tickets'},()=>loadTickets()).subscribe();
+}
+async function loadAll(){ loadTickets(); loadWallets(); loadTxs(); }
+async function loadTickets(){
+ const {data} = await supa.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(100);
+ document.getElementById('tCount').textContent=data?.length||0;
+ document.getElementById('tickets').innerHTML=(data||[]).map(t=>`
+  <div class="bg-black p-3 rounded-xl border border-zinc-800">
+   <div class="flex justify-between"><b class="text-xs text-lime-400">${t.email||''}</b><span class="text-[10px] text-zinc-500">${new Date(t.created_at).toLocaleString()}</span></div>
+   <p class="mt-1 text-sm">${t.issue}</p>
+   <p class="text-[11px] text-zinc-500">Screen: ${t.screen||''}</p>
+   ${t.response?`<div class="mt-2 bg-green-900/30 p-2 rounded text-xs">✅ You: ${t.response}</div>`:`
+   <div class="flex gap-2 mt-2">
+    <input id="rep-${t.id}" placeholder="Type answer..." class="flex-1 bg-zinc-800 p-2 rounded text-xs">
+    <button onclick="answer('${t.id}')" class="bg-white text-black px-3 rounded text-xs font-bold">Reply</button>
+   </div>`}
+   <div class="flex gap-2 mt-2">
+    <button onclick="refund('${t.user_id}')" class="text-[11px] bg-zinc-800 px-2 py-1 rounded">Refund ₦500</button>
+    <button onclick="delTicket('${t.id}')" class="text-[11px] bg-red-900 px-2 py-1 rounded">Resolve</button>
+   </div>
+  </div>`).join('')||'<p class="text-zinc-500 text-sm">No tickets yet</p>';
+}
+async function answer(id){
+ const text=document.getElementById('rep-'+id).value;
+ if(!text) return;
+ await supa.from('support_tickets').update({response:text}).eq('id',id);
+ loadTickets();
+}
+async function delTicket(id){ await supa.from('support_tickets').delete().eq('id',id); loadTickets(); }
+async function loadWallets(){
+ const {data} = await supa.from('wallets').select('*').order('balance',{ascending:false}).limit(100);
+ const total=(data||[]).reduce((s,w)=>s+Number(w.balance||0),0);
+ document.getElementById('bal').textContent='₦'+total.toLocaleString();
+ document.getElementById('uCount').textContent=data?.length||0;
+ document.getElementById('wallets').innerHTML=(data||[]).map(w=>`
+  <div class="flex justify-between bg-black p-2 rounded">
+   <span class="truncate">${w.user_id?.slice(0,6)}... ₦${w.balance}</span>
+   <button onclick="addMoney('${w.user_id}')" class="bg-lime-400 text-black px-2 rounded text-[11px]">+₦</button>
+  </div>`).join('');
+}
+async function loadTxs(){
+ const {data} = await supa.from('transactions').select('*').order('created_at',{ascending:false}).limit(50);
+ document.getElementById('txs').innerHTML=(data||[]).map(t=>`<div class="bg-black p-2 rounded flex justify-between"><span>${t.type} ₦${t.amount}</span><span class="text-zinc-500">${new Date(t.created_at).toLocaleTimeString()}</span></div>`).join('');
+}
+async function addMoney(uid){
+ const amt=prompt('How much to add? e.g 1000');
+ if(!amt) return;
+ const {data:wal}=await supa.from('wallets').select('balance').eq('user_id',uid).single();
+ await supa.from('wallets').update({balance:Number(wal.balance)+Number(amt)}).eq('user_id',uid);
+ loadWallets();
+}
+async function refund(uid){ addMoney(uid); }
+</script>
+</body></html>
