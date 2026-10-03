@@ -1,156 +1,133 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>AI Wallet SUPER + Paystack - FINAL</title><script src="https://cdn.tailwindcss.com"></script><script src="https://js.paystack.co/v1/inline.js"></script><script src="https://unpkg.com/react@18/umd/react.production.min.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script></head><body style="background:#0a0a0a"><div id="root"></div><script type="text/babel" data-presets="react">
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Emma Wallet - Real App</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#6d28d9"><script src="https://cdn.tailwindcss.com"></script><script src="https://js.paystack.co/v1/inline.js"></script><script src="https://unpkg.com/react@18/umd/react.production.min.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script><script src="https://unpkg.com/@babel/standalone/babel.min.js"></script></head><body style="background:#0a0a0a"><div id="root"></div><script type="text/babel" data-presets="react">
 function App(){
-  const [bal,setBal]=React.useState(45230);
+  const getRealBal = () => parseInt(localStorage.getItem('real_paystack_balance') || '0');
+  const [bal,setBal]=React.useState(getRealBal());
   const [tab,setTab]=React.useState('home');
   const [showAI,setShowAI]=React.useState(false);
   const [aiMsg,setAiMsg]=React.useState('');
   const [aiReply,setAiReply]=React.useState('');
   const [aiLoading,setAiLoading]=React.useState(false);
   const [cardFrozen,setCardFrozen]=React.useState(false);
-  const [transactions,setTransactions]=React.useState([
-    {t:'MTN Airtime',a:-1000,d:'Today',i:'📱',cat:'Airtime'},
-    {t:'Paystack Funding',a:+15000,d:'Today',i:'💳',cat:'Income'},
-    {t:'DSTV Premium',a:-8500,d:'Yesterday',i:'📺',cat:'Bills'},
-    {t:'Uber Ride',a:-3200,d:'Yesterday',i:'🚗',cat:'Transport'},
-  ]);
+  const [transactions,setTransactions]=React.useState(JSON.parse(localStorage.getItem('real_transactions')||'[]'));
   const [reminders,setReminders]=React.useState([
     {id:1,n:'DSTV Premium',amt:8500,dueIn:1,icon:'📺',urgent:true},
     {id:2,n:'Ajo Contribution',amt:10000,dueIn:0,icon:'💰',urgent:true},
     {id:3,n:'IBEDC Electricity',amt:12000,dueIn:5,icon:'💡',urgent:false},
   ]);
   const [paystackKey,setPaystackKey]=React.useState(localStorage.getItem('pkKey')||'');
-  const [showKeyInput,setShowKeyInput]=React.useState(true);
-  const [email,setEmail]=React.useState('tolu@example.com');
+  const [showKeyInput,setShowKeyInput]=React.useState(!localStorage.getItem('pkKey'));
+  const [email,setEmail]=React.useState(localStorage.getItem('userEmail')||'euniceomodelta@gmail.com');
   const totalDue = reminders.reduce((s,r)=>s+r.amt,0);
   const byCat = transactions.filter(t=>t.a<0).reduce((acc,t)=>{acc[t.cat]=(acc[t.cat]||0)+Math.abs(t.a); return acc;},{});
   const totalSpent = Object.values(byCat).reduce((s,v)=>s+v,0);
-  function fundWithPaystack(amount){
-    if(!paystackKey){setShowKeyInput(true); alert('Add Paystack Public Key first!'); return;}
-    if(!window.PaystackPop){alert('Paystack loading, wait 2 sec'); return;}
-    const handler = window.PaystackPop.setup({
-      key: paystackKey,
-      email: email,
-      amount: amount*100,
-      currency: 'NGN',
-      ref: 'WALLET_'+Math.floor(Math.random()*1000000000),
-      onClose: function(){alert('Payment closed');},
-      callback: function(res){
-        setBal(bal+amount);
-        setTransactions([{t:'Paystack • '+res.reference,a:+amount,d:'Now',i:'💳',cat:'Income'},...transactions]);
-        alert('✅ Paid ₦'+amount+' Ref:'+res.reference);
-      }
-    });
-    handler.openIframe();
+  function saveBal(newBal, newTx){
+    localStorage.setItem('real_paystack_balance', newBal.toString());
+    localStorage.setItem('real_transactions', JSON.stringify(newTx));
+    setBal(newBal); setTransactions(newTx);
+    localStorage.removeItem('balance'); // delete old fake
   }
-    async function askAI(){
+  function fundWithPaystack(amount){
+    if(!paystackKey){setShowKeyInput(true); alert('Add Paystack Live Key first!'); return;}
+    const handler = window.PaystackPop.setup({
+      key: paystackKey, email: email, amount: amount*100, currency: 'NGN',
+      ref: 'EMMA_'+Math.floor(Math.random()*1000000000),
+      callback: function(res){
+        const newBal = bal + amount;
+        const newTx = [{t:'Paystack • '+res.reference,a:+amount,d:'Now',i:'💳',cat:'Income'},...transactions];
+        saveBal(newBal, newTx);
+        alert('✅ REAL MONEY ₦'+amount+' added! Ref:'+res.reference);
+      }
+    }); handler.openIframe();
+  }
+  async function askAI(){
     if(!aiMsg.trim())return;
     const gkey=localStorage.getItem('groqKey');
-    if(!gkey){alert('Add Groq key in localStorage');return;}
+    if(!gkey){alert('Set groqKey in localStorage');return;}
     setAiLoading(true);
     try{
-      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+gkey},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:'Nigerian fintech AI'},{role:'user',content:`Bal ₦${bal} Due ₦${totalDue} Q:${aiMsg}`}],max_tokens:200})});
+      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+gkey},body:JSON.stringify({model:'openai/gpt-oss-120b',messages:[{role:'system',content:'Nigerian fintech AI'},{role:'user',content:`Bal ₦${bal} Q:${aiMsg}`}],max_tokens:200})});
       const d=await r.json(); setAiReply(d.choices[0].message.content);
-    }catch(e){setAiReply(`Balance ₦${bal}, due ₦${totalDue}. Fund via Paystack.`);}
+    }catch(e){setAiReply(`Balance ₦${bal}. Fund via Paystack to get real money.`);}
     setAiLoading(false);
   }
   return React.createElement("div",{className:"min-h-screen bg-[#0a0a0a] text-white max-w-[390px] mx-auto flex flex-col"},
     React.createElement("div",{className:"p-4 flex justify-between items-center"},
       React.createElement("div",{className:"flex gap-2 items-center"},
-        React.createElement("div",{className:"w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-full flex items-center justify-center font-bold"},"TA"),
+        React.createElement("div",{className:"w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-full flex items-center justify-center font-bold"},"EW"),
         React.createElement("div",null,
-          React.createElement("div",{className:"text-xs opacity-60"},"Paystack Live • Verified"),
+          React.createElement("div",{className:"text-xs opacity-60"}, paystackKey.includes('live')? "Paystack Live • Real Money" : "Add Live Key for Real Money"),
           React.createElement("div",{className:"font-bold text-sm"},"₦"+bal.toLocaleString())
         )
       ),
       React.createElement("div",{className:"flex gap-2"},
+        React.createElement("button",{onClick:()=>{if(confirm('Delete all fake money? Balance will become ₦0')){saveBal(0,[]);}},className:"w-8 h-8 bg-zinc-800 rounded-full text-xs"},"🗑️"),
         React.createElement("button",{onClick:()=>setShowKeyInput(!showKeyInput),className:"w-8 h-8 bg-zinc-800 rounded-full text-xs"},"🔑"),
         React.createElement("button",{onClick:()=>setShowAI(!showAI),className:"w-8 h-8 bg-white text-black rounded-full"},"🤖")
       )
     ),
     showKeyInput&&React.createElement("div",{className:"mx-4 bg-zinc-900 border border-zinc-800 rounded-2xl p-3"},
-      React.createElement("div",{className:"text-xs font-bold"},"⚙️ Paystack Setup - Real Payments"),
-      React.createElement("input",{value:paystackKey,onChange:e=>setPaystackKey(e.target.value),placeholder:"pk_test_xxx or pk_live_xxx",className:"w-full bg-black border border-zinc-700 rounded-full px-3 py-2 text-xs mt-2"}),
+      React.createElement("div",{className:"text-xs font-bold"},"⚙️ Real Paystack Setup"),
+      React.createElement("input",{value:paystackKey,onChange:e=>setPaystackKey(e.target.value),placeholder:"pk_live_xxx for real money",className:"w-full bg-black border border-zinc-700 rounded-full px-3 py-2 text-xs mt-2"}),
       React.createElement("input",{value:email,onChange:e=>setEmail(e.target.value),placeholder:"your email",className:"w-full bg-black border border-zinc-700 rounded-full px-3 py-2 text-xs mt-2"}),
       React.createElement("div",{className:"flex gap-2 mt-2"},
-        React.createElement("button",{onClick:()=>{localStorage.setItem('pkKey',paystackKey); setShowKeyInput(false); alert('Saved! Now Add Money works');},className:"flex-1 bg-green-600 py-2 rounded-full text-xs font-bold"},"Save"),
+        React.createElement("button",{onClick:()=>{localStorage.setItem('pkKey',paystackKey); localStorage.setItem('userEmail',email); setShowKeyInput(false);},className:"flex-1 bg-green-600 py-2 rounded-full text-xs font-bold"},"Save Live Key"),
         React.createElement("a",{href:"https://dashboard.paystack.com/#/settings/developer",target:"_blank",className:"flex-1 bg-zinc-800 py-2 rounded-full text-xs font-bold text-center"},"Get Key")
-      ),
-      React.createElement("div",{className:"text-[10px] opacity-60 mt-2"},"Test card: 4084084084084081 12/30 408")
+      )
     ),
     tab==='home'&&React.createElement("div",{className:"flex flex-col gap-3"},
       React.createElement("div",{className:"mx-4 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 rounded-[24px] p-5"},
-        React.createElement("div",{className:"text-sm opacity-80"},"Wallet Balance • Paystack Secured"),
+        React.createElement("div",{className:"text-sm opacity-80"}, bal===0? "Real Balance • ₦0 - Fund via Paystack" : "Real Balance • Paystack Secured"),
         React.createElement("div",{className:"text-3xl font-black mt-1"},"₦"+bal.toLocaleString()),
         React.createElement("div",{className:"flex gap-2 mt-4"},
-          React.createElement("button",{onClick:()=>{const a=parseInt(prompt('Fund amount? e.g., 2000')); if(a) fundWithPaystack(a);},className:"flex-1 bg-white text-black py-3 rounded-full font-bold text-sm"},"💳 Add via Paystack"),
-          React.createElement("button",{onClick:()=>{const a=parseInt(prompt('Send?')); if(a&&a<=bal)setBal(bal-a);},className:"flex-1 bg-black/30 py-3 rounded-full font-bold text-sm"},"Send")
+          React.createElement("button",{onClick:()=>{const a=parseInt(prompt('Fund how much?')); if(a) fundWithPaystack(a);},className:"flex-1 bg-white text-black py-3 rounded-full font-bold text-sm"},"💳 Add Real Money"),
+          React.createElement("button",{onClick:()=>{const a=parseInt(prompt('Send?')); if(a&&a<=bal){saveBal(bal-a,[{t:'Transfer',a:-a,d:'Now',i:'💸',cat:'Transfer'},...transactions]);}},className:"flex-1 bg-black/30 py-3 rounded-full font-bold text-sm"},"Send")
         )
       ),
       React.createElement("div",{className:"mx-4 grid grid-cols-3 gap-2"},
-        [{n:'Airtime',i:'📱'},{n:'Data',i:'📶'},{n:'Power',i:'💡'},{n:'TV',i:'📺'},{n:'Betting',i:'⚽'},{n:'School',i:'🎓'}].map(b=>React.createElement("button",{key:b.n,onClick:()=>{const a=parseInt(prompt(b.n+' amt?')); if(a&&a<=bal){setBal(bal-a); setTransactions([{t:b.n,a:-a,d:'Now',i:b.i,cat:'Bills'},...transactions]);}},className:"bg-zinc-900 border border-zinc-800 rounded-2xl p-3 text-center"},React.createElement("div",{className:"text-lg"},b.i),React.createElement("div",{className:"text-xs mt-1"},b.n)))
+        [{n:'Airtime',i:'📱'},{n:'Data',i:'📶'},{n:'Power',i:'💡'},{n:'TV',i:'📺'},{n:'Betting',i:'⚽'},{n:'School',i:'🎓'}].map(b=>React.createElement("button",{key:b.n,onClick:()=>{const a=parseInt(prompt(b.n+' amt?')); if(a>bal){alert('No fake money! Fund with Paystack first'); return;} if(a){saveBal(bal-a,[{t:b.n,a:-a,d:'Now',i:b.i,cat:'Bills'},...transactions]);}},className:"bg-zinc-900 border border-zinc-800 rounded-2xl p-3 text-center"},React.createElement("div",{className:"text-lg"},b.i),React.createElement("div",{className:"text-xs mt-1"},b.n)))
       )
     ),
     tab==='card'&&React.createElement("div",{className:"mx-4"},
       React.createElement("div",{className:`rounded-[24px] p-5 h-[200px] ${cardFrozen?'bg-zinc-800':'bg-gradient-to-br from-zinc-900 to-black border border-zinc-700'}`},
-        React.createElement("div",{className:"flex justify-between text-xs opacity-60"},React.createElement("span",null,"VIRTUAL CARD"),React.createElement("span",{className:"font-black italic"},"Verve")),
+        React.createElement("div",{className:"flex justify-between text-xs opacity-60"},React.createElement("span",null,"REAL WALLET"),React.createElement("span",{className:"font-black italic"},"Verve")),
         React.createElement("div",{className:"mt-8 font-mono tracking-widest"},"5399 4587 1234 5678"),
         React.createElement("div",{className:"flex justify-between mt-6"},
-          React.createElement("div",null,React.createElement("div",{className:"text-[10px] opacity-60"},"HOLDER"),React.createElement("div",{className:"text-sm font-bold"},"TOLU A")),
+          React.createElement("div",null,React.createElement("div",{className:"text-[10px] opacity-60"},"HOLDER"),React.createElement("div",{className:"text-sm font-bold"},"EMMA")),
           React.createElement("div",null,React.createElement("div",{className:"text-[10px] opacity-60"},"BAL"),React.createElement("div",{className:"text-sm font-bold"},"₦"+bal.toLocaleString()))
         )
       ),
       React.createElement("div",{className:"flex gap-2 mt-3"},
-        React.createElement("button",{onClick:()=>fundWithPaystack(5000),className:"flex-1 bg-violet-600 py-3 rounded-full text-xs font-bold"},"Fund ₦5k"),
+        React.createElement("button",{onClick:()=>fundWithPaystack(5000),className:"flex-1 bg-violet-600 py-3 rounded-full text-xs font-bold"},"Fund ₦5k Real"),
         React.createElement("button",{onClick:()=>setCardFrozen(!cardFrozen),className:`flex-1 py-3 rounded-full text-xs font-bold ${cardFrozen?'bg-green-500 text-black':'bg-red-500/20 text-red-400'}`},cardFrozen?"Unfreeze":"Freeze")
       )
     ),
     tab==='chart'&&React.createElement("div",{className:"mx-4 bg-zinc-900 border border-zinc-800 rounded-[24px] p-5"},
-      React.createElement("div",{className:"text-xs opacity-60"},"Total Spent"),
+      React.createElement("div",{className:"text-xs opacity-60"},"Real Spending"),
       React.createElement("div",{className:"text-2xl font-black"},"₦"+totalSpent.toLocaleString()),
-      Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>{
-        const c=['#8b5cf6','#22c55e','#f59e0b'][i]||'#fff';
-        return React.createElement("div",{key:k,className:"mt-3"},
-          React.createElement("div",{className:"flex justify-between text-xs"},React.createElement("span",null,k),React.createElement("span",{className:"font-bold"},"₦"+v.toLocaleString())),
-          React.createElement("div",{className:"w-full bg-zinc-800 h-2 rounded-full mt-1"},React.createElement("div",{className:"h-2 rounded-full",style:{width:v/totalSpent*100+'%',background:c}}))
-        )
-      })
+      transactions.length===0?React.createElement("div",{className:"text-xs opacity-50 mt-3"},"No real transactions yet"):Object.entries(byCat).map(([k,v])=>React.createElement("div",{key:k,className:"mt-3"},React.createElement("div",{className:"flex justify-between text-xs"},React.createElement("span",null,k),React.createElement("span",null,"₦"+v.toLocaleString()))))
     ),
     tab==='reminders'&&React.createElement("div",{className:"mx-4 flex flex-col gap-2"},
       React.createElement("div",{className:"bg-gradient-to-br from-orange-600 to-red-600 rounded-[20px] p-4 flex justify-between"},
-        React.createElement("div",null,
-          React.createElement("div",{className:"text-xs opacity-80"},reminders.length+" bills due"),
-          React.createElement("div",{className:"text-xl font-black"},"₦"+totalDue.toLocaleString()+" due")
-        ),
-        React.createElement("button",{onClick:()=>fundWithPaystack(totalDue),className:"bg-white text-black px-3 py-2 rounded-full text-xs font-bold"},"Fund & Pay")
+        React.createElement("div",null,React.createElement("div",{className:"text-xs opacity-80"},reminders.length+" bills due"),React.createElement("div",{className:"text-xl font-black"},"₦"+totalDue.toLocaleString()+" due")),
+        React.createElement("button",{onClick:()=>fundWithPaystack(totalDue),className:"bg-white text-black px-3 py-2 rounded-full text-xs font-bold"},"Fund Real")
       ),
       reminders.map(r=>React.createElement("div",{key:r.id,className:"bg-zinc-900 border border-zinc-800 rounded-2xl p-3 flex justify-between"},
-        React.createElement("div",{className:"flex gap-3"},
-          React.createElement("div",{className:"w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center"},r.icon),
-          React.createElement("div",null,React.createElement("div",{className:"text-sm font-bold"},r.n),React.createElement("div",{className:"text-xs opacity-60"},"₦"+r.amt.toLocaleString()+" • "+(r.dueIn===0?"Today":"In "+r.dueIn+"d")))
-        ),
-        React.createElement("button",{onClick:()=>{if(bal>=r.amt){setBal(bal-r.amt); setReminders(reminders.filter(x=>x.id!==r.id));}else alert('Fund via Paystack first!');},className:"bg-white text-black px-4 py-2 rounded-full text-xs font-bold"},"Pay")
+        React.createElement("div",{className:"flex gap-3"},React.createElement("div",{className:"w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center"},r.icon),React.createElement("div",null,React.createElement("div",{className:"text-sm font-bold"},r.n),React.createElement("div",{className:"text-xs opacity-60"},"₦"+r.amt.toLocaleString()))),
+        React.createElement("button",{onClick:()=>{if(bal>=r.amt){saveBal(bal-r.amt,[{t:r.n,a:-r.amt,d:'Now',i:r.icon,cat:'Bills'},...transactions]); setReminders(reminders.filter(x=>x.id!==r.id));}else alert('Fund real money first');},className:"bg-white text-black px-4 py-2 rounded-full text-xs font-bold"},"Pay")
       ))
     ),
     React.createElement("div",{className:"p-4"},
-      transactions.slice(0,3).map((t,i)=>React.createElement("div",{key:i,className:"flex justify-between py-2 border-b border-zinc-900"},
-        React.createElement("div",{className:"flex gap-3"},
-          React.createElement("div",{className:"w-8 h-8 bg-zinc-900 rounded-full flex items-center justify-center text-sm"},t.i),
-          React.createElement("div",null,React.createElement("div",{className:"text-sm"},t.t),React.createElement("div",{className:"text-xs opacity-50"},t.d))
-        ),
-        React.createElement("div",{className:t.a>0?"text-green-400 font-bold text-sm":"font-bold text-sm"},"₦"+Math.abs(t.a).toLocaleString())
+      transactions.length===0?React.createElement("div",{className:"text-center text-xs opacity-50 py-4"},"No real transactions - Fund with Paystack to start") :
+      transactions.slice(0,5).map((t,i)=>React.createElement("div",{key:i,className:"flex justify-between py-2 border-b border-zinc-900"},
+        React.createElement("div",{className:"flex gap-3"},React.createElement("div",{className:"w-8 h-8 bg-zinc-900 rounded-full flex items-center justify-center text-sm"},t.i),React.createElement("div",null,React.createElement("div",{className:"text-sm"},t.t),React.createElement("div",{className:"text-xs opacity-50"},t.d))),
+        React.createElement("div",{className:t.a>0?"text-green-400 font-bold text-sm":"font-bold text-sm"},(t.a>0?"+":"-")+"₦"+Math.abs(t.a).toLocaleString())
       ))
     ),
     showAI&&React.createElement("div",{className:"fixed inset-0 bg-black/80 z-50 flex flex-col"},
       React.createElement("div",{className:"bg-zinc-900 rounded-t-[24px] mt-auto p-4 min-h-[60vh]"},
-        React.createElement("div",{className:"flex justify-between"},
-          React.createElement("b",null,"🤖 AI + Paystack"),
-          React.createElement("button",{onClick:()=>setShowAI(false),className:"w-8 h-8 bg-zinc-800 rounded-full"},"✕")
-        ),
-        React.createElement("div",{className:"mt-4 bg-zinc-800 rounded-2xl p-3 text-sm"},aiReply||"Ask about payments!"),
-        React.createElement("div",{className:"flex gap-2 mt-4"},
-          React.createElement("input",{value:aiMsg,onChange:e=>setAiMsg(e.target.value),placeholder:"How to fund?",className:"flex-1 bg-black border border-zinc-700 rounded-full px-4 py-3 text-sm"}),
-          React.createElement("button",{onClick:askAI,className:"bg-white text-black w-12 h-12 rounded-full"},aiLoading?"...":"➤")
-        )
+        React.createElement("div",{className:"flex justify-between"},React.createElement("b",null,"🤖 AI Real Wallet"),React.createElement("button",{onClick:()=>setShowAI(false),className:"w-8 h-8 bg-zinc-800 rounded-full"},"✕")),
+        React.createElement("div",{className:"mt-4 bg-zinc-800 rounded-2xl p-3 text-sm"},aiReply||"Real wallet: ₦"+bal+". No fake money!"),
+        React.createElement("div",{className:"flex gap-2 mt-4"},React.createElement("input",{value:aiMsg,onChange:e=>setAiMsg(e.target.value),placeholder:"Ask...",className:"flex-1 bg-black border border-zinc-700 rounded-full px-4 py-3 text-sm"}),React.createElement("button",{onClick:askAI,className:"bg-white text-black w-12 h-12 rounded-full"},aiLoading?"...":"➤"))
       )
     ),
     React.createElement("div",{className:"grid grid-cols-4 gap-1 p-2 bg-zinc-900 mt-auto border-t border-zinc-800"},
@@ -159,5 +136,4 @@ function App(){
   )
 }
 const r=ReactDOM.createRoot(document.getElementById("root"));r.render(React.createElement(App));
-</script></body></html>
-    
+</script><script>if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{})}</script></body></html>
