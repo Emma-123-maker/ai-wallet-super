@@ -1,109 +1,56 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V5 SUPER</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
-<body class="bg-black text-white p-3"><div class="max-w-6xl mx-auto">
-<h1 class="text-2xl font-black">👑 HQ V5 - SUPER ADMIN</h1><p id="conn" class="text-xs text-zinc-500 mb-2">Not connected</p>
-
-<div class="grid grid-cols-4 gap-2 mb-3">
-<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[9px] text-zinc-400">USERS</p><p id="uCount" class="text-lg font-bold">-</p></div>
-<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[9px] text-zinc-400">WALLETS</p><p id="wCount" class="text-lg font-bold">-</p></div>
-<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[9px] text-zinc-400">TOTAL ₦</p><p id="totBal" class="text-lg font-bold text-green-400">₦0</p></div>
-<div class="bg-zinc-900 p-3 rounded-xl"><p class="text-[9px] text-zinc-400">TICKETS</p><p id="tCount" class="text-lg font-bold">-</p></div>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V6 TRANSACTIONS</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
+<body class="bg-black text-white p-3"><div class="max-w-7xl mx-auto">
+<h1 class="text-xl font-black">👑 HQ V6 • Transactions View</h1>
+<div class="grid grid-cols-4 gap-2 my-2 text-xs">
+<div class="bg-zinc-900 p-2 rounded">USERS <b id="uC" class="block text-lg">-</b></div>
+<div class="bg-zinc-900 p-2 rounded">WALLETS <b id="wC" class="block text-lg">-</b></div>
+<div class="bg-zinc-900 p-2 rounded text-green-400">TOTAL ₦ <b id="tot" class="block text-lg">0</b></div>
+<div class="bg-zinc-900 p-2 rounded">TXs <b id="txC" class="block text-lg">-</b></div>
 </div>
+<div class="flex gap-2 mb-2"><input id="u" class="flex-1 bg-zinc-900 p-2 rounded text-[10px]" placeholder="https://...supabase.co"><input id="k" class="flex-1 bg-zinc-900 p-2 rounded text-[10px]" placeholder="anon eyJ..."><input id="s" class="flex-1 bg-zinc-900 border border-yellow-500 p-2 rounded text-[10px]" placeholder="service_role eyJ..."><button onclick="go()" class="bg-white text-black px-4 rounded font-bold text-xs">Connect</button></div>
 
-<div class="flex gap-2 mb-3 flex-wrap">
-<input id="u" class="flex-1 bg-zinc-900 p-3 rounded-xl text-[11px] min-w-[200px]" placeholder="https://...supabase.co">
-<input id="k" class="flex-1 bg-zinc-900 p-3 rounded-xl text-[11px] min-w-[200px]" placeholder="anon eyJ...">
-<input id="s" class="flex-1 bg-zinc-900 border-2 border-yellow-500 p-3 rounded-xl text-[11px] min-w-[200px]" placeholder="service_role eyJ... LONGER">
-<button onclick="go()" class="bg-white text-black px-5 py-3 rounded-xl font-bold text-xs">Connect</button>
+<div class="bg-zinc-900 rounded-xl p-3 mb-3">
+<div class="flex gap-2 flex-wrap mb-2">
+<input id="fEmail" placeholder="fund email" class="bg-black p-2 rounded text-xs flex-1"><input id="fAmt" type="number" placeholder="5000" class="bg-black p-2 rounded text-xs w-24">
+<button onclick="fund(1)" class="bg-green-500 text-black px-3 py-1 rounded font-bold text-xs">+ CREDIT</button><button onclick="fund(-1)" class="bg-red-500 px-3 py-1 rounded font-bold text-xs">- DEBIT</button>
+<button onclick="exportCSV()" class="bg-zinc-700 px-3 py-1 rounded text-xs">📥 Export CSV</button>
 </div>
-
-<div class="flex gap-2 mb-4 flex-wrap">
-<button onclick="verifyAll()" class="bg-yellow-400 text-black px-4 py-2 rounded-xl font-black text-xs">✅ VERIFY ALL WAITING</button>
-<button onclick="go()" class="bg-zinc-800 px-4 py-2 rounded-xl text-xs">🔄 Refresh All</button>
-<input id="search" oninput="filterUsers()" placeholder="Search email..." class="bg-zinc-900 p-2 rounded-xl text-xs w-40">
-</div>
-
-<div class="grid lg:grid-cols-2 gap-3">
-<!-- USERS -->
-<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">🔐 Users (<span id="uListCount">0</span>)</h2><div id="list" class="space-y-2 max-h-[70vh] overflow-auto text-xs">Connect first</div></div>
-
-<!-- WALLETS + FUND -->
-<div class="space-y-3">
-<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">💰 Wallets & Fund / Debit</h2>
-<div class="flex gap-2 mb-2">
-<input id="fundEmail" placeholder="user email or user_id" class="flex-1 bg-black p-2 rounded text-xs">
-<input id="fundAmt" type="number" placeholder="5000" class="w-24 bg-black p-2 rounded text-xs">
-<button onclick="fundWallet()" class="bg-green-500 text-black px-3 py-2 rounded font-bold text-xs">+ CREDIT</button>
-<button onclick="debitWallet()" class="bg-red-500 text-white px-3 py-2 rounded font-bold text-xs">- DEBIT</button>
-</div>
-<div id="wallets" class="text-xs max-h-[30vh] overflow-auto"></div>
-</div>
-
-<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">📜 Transactions (last 50)</h2><div id="txs" class="text-[11px] max-h-[30vh] overflow-auto">No tx table? Will show empty</div></div>
-
-<div class="bg-zinc-900 rounded-2xl p-3"><h2 class="font-bold text-sm mb-2">🆘 Tickets</h2><div id="tickets" class="text-xs max-h-[30vh] overflow-auto">No tickets yet</div></div>
+<div class="flex gap-2 flex-wrap">
+<input id="txSearch" oninput="renderTxs()" placeholder="Search tx by email/type" class="bg-black p-2 rounded text-xs flex-1">
+<select id="txType" onchange="renderTxs()" class="bg-black p-2 rounded text-xs"><option value="">All Types</option><option>credit</option><option>debit</option><option>transfer</option><option>airtime</option><option>data</option></select>
+<span class="text-[10px] text-zinc-500">Credit: <b id="sumC" class="text-green-400">0</b> | Debit: <b id="sumD" class="text-red-400">0</b></span>
 </div>
 </div>
 
-<p id="log" class="text-[9px] text-zinc-600 mt-3 break-all"></p>
+<div id="list" class="bg-zinc-900 rounded-xl p-3 text-xs max-h-[80vh] overflow-auto">Connect first...</div>
 </div>
 <script>
-let adm=null, allUsers=[], allWallets=[]; const $=id=>document.getElementById(id);
-let saved=JSON.parse(localStorage.getItem('hq5')||'{}'); if(saved.u) $('u').value=saved.u; if(saved.k) $('k').value=saved.k; if(saved.s) $('s').value=saved.s;
+let adm=null, usersMap={}, allTxs=[], allUsers=[]; const $=id=>document.getElementById(id);
+let saved=JSON.parse(localStorage.getItem('hq6')||'{}'); if(saved.u) $('u').value=saved.u; if(saved.k) $('k').value=saved.k; if(saved.s) $('s').value=saved.s;
 if(saved.u) go();
-async function go(){
- const u=$('u').value.trim(), k=$('k').value.trim(), s=$('s').value.trim();
- if(!u||!k||!s) return alert('Paste 3 keys');
- localStorage.setItem('hq5',JSON.stringify({u,k,s}));
- $('conn').textContent='Connecting...';
+async function go(){ const u=$('u').value.trim(),k=$('k').value.trim(),s=$('s').value.trim(); if(!u||!k||!s) return alert('paste 3 keys'); localStorage.setItem('hq6',JSON.stringify({u,k,s})); adm=supabase.createClient(u,s); loadAll(); }
+async function loadAll(){
  try{
-  adm=supabase.createClient(u,s);
-  $('conn').textContent='✅ Connected '+u;
-  await Promise.all([loadUsers(), loadWallets(), loadTxs(), loadTickets()]);
- }catch(e){ $('log').textContent=e.message; alert(e.message); }
+  const {data:uData}=await adm.auth.admin.listUsers({page:1,perPage:100}); allUsers=uData.users||[]; usersMap={}; allUsers.forEach(x=>usersMap[x.id]=x.email); $('uC').textContent=allUsers.length;
+  const {data:wData}=await adm.from('wallets').select('*'); $('wC').textContent=wData?.length||0; $('tot').textContent=(wData||[]).reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString();
+  const {data:txData}=await adm.from('transactions').select('*').order('created_at',{ascending:false}).limit(200); allTxs=txData||[]; $('txC').textContent=allTxs.length; renderTxs();
+ }catch(e){ $('list').innerHTML=e.message; }
 }
-async function loadUsers(){
- try{
-  const {data, error}=await adm.auth.admin.listUsers({page:1, perPage:100});
-  if(error) throw error;
-  allUsers=data.users||[]; $('uCount').textContent=allUsers.length; $('uListCount').textContent=allUsers.length;
-  renderUsers(allUsers);
- }catch(e){ $('list').innerHTML='Error: '+e.message; }
+function renderTxs(){
+ let q=($('txSearch').value||'').toLowerCase(), typ=$('txType').value, filtered=allTxs.filter(t=>{
+  let email=(usersMap[t.user_id]||t.user_id||'').toLowerCase(); return (!q||email.includes(q)||(t.type||'').toLowerCase().includes(q)||(t.description||'').toLowerCase().includes(q)) && (!typ||t.type===typ);
+ });
+ let sumC=0,sumD=0; filtered.forEach(t=>{ if(t.type==='credit') sumC+=Number(t.amount); else if(t.type==='debit') sumD+=Number(t.amount); });
+ $('sumC').textContent='₦'+sumC.toLocaleString(); $('sumD').textContent='₦'+sumD.toLocaleString();
+ $('list').innerHTML=filtered.map(t=>`<div class="flex justify-between bg-black p-2 rounded mb-1 border-l-4 ${t.type==='credit'?'border-green-500':'border-red-500'}"><div><b class="${t.type==='credit'?'text-green-400':'text-red-400'}">${t.type.toUpperCase()} ₦${Number(t.amount).toLocaleString()}</b><div class="text-[10px]">${usersMap[t.user_id]||t.user_id.slice(0,8)} • ${t.description||''}</div></div><div class="text-[9px] text-zinc-500 text-right">${new Date(t.created_at).toLocaleString()}<br><span class="bg-zinc-800 px-1 rounded">${t.status||'success'}</span></div></div>`).join('')||'No transactions yet - credit a user to create first tx';
 }
-function renderUsers(list){
- $('list').innerHTML=list.map(us=>`<div class="bg-black p-2 rounded border ${!us.email_confirmed_at?'border-yellow-600':'border-zinc-800'} flex justify-between"><div><b class="${!us.email_confirmed_at?'text-yellow-300':''}">${us.email}</b><div class="text-[9px] text-zinc-500">${us.id.slice(0,8)} • ${us.email_confirmed_at?'✅ '+new Date(us.email_confirmed_at).toLocaleDateString():'⏳ WAITING'}</div></div><div class="flex gap-1 flex-col">${!us.email_confirmed_at?`<button onclick="verifyOne('${us.id}')" class="bg-yellow-400 text-black px-2 py-1 rounded text-[10px] font-bold">Verify</button>`:''}<button onclick="copyId('${us.id}')" class="bg-zinc-800 px-2 py-1 rounded text-[9px]">Copy ID</button><button onclick="deleteUser('${us.id}')" class="bg-red-900 px-2 py-1 rounded text-[9px]">Del</button></div></div>`).join('')||'No users';
+async function fund(dir){
+ let em=$('fEmail').value.trim(), amt=Number($('fAmt').value); if(!em||!amt) return alert('email + amount'); let uid=em.includes('@')? allUsers.find(u=>u.email===em)?.id : em; if(!uid) return alert('user not found'); if(em.includes('@')&&!uid) return alert('email not in users list - connect first');
+ let {data:wal}=await adm.from('wallets').select('*').eq('user_id',uid).single(); let newBal=dir>0? (Number(wal?.balance||0)+amt) : Math.max(0,Number(wal?.balance||0)-amt);
+ if(!wal) await adm.from('wallets').insert({user_id:uid,balance:newBal}); else await adm.from('wallets').update({balance:newBal}).eq('user_id',uid);
+ await adm.from('transactions').insert({user_id:uid,type:dir>0?'credit':'debit',amount:amt,description: dir>0?'HQ V6 Admin Credit':'HQ V6 Admin Debit'});
+ alert((dir>0?'Credited ':'Debited ')+'₦'+amt); loadAll();
 }
-function filterUsers(){ const q=$('search').value.toLowerCase(); renderUsers(allUsers.filter(u=>u.email.toLowerCase().includes(q))); }
-async function verifyOne(id){ await adm.auth.admin.updateUserById(id,{email_confirm:true}); loadUsers(); }
-async function verifyAll(){ let c=0; for(let u of allUsers){ if(!u.email_confirmed_at){ await adm.auth.admin.updateUserById(u.id,{email_confirm:true}); c++; } } alert('Verified '+c); loadUsers(); }
-async function deleteUser(id){ if(!confirm('Delete user?')) return; await adm.auth.admin.deleteUser(id); loadUsers(); }
-function copyId(id){ navigator.clipboard.writeText(id); $('fundEmail').value=id; alert('ID copied to fund box'); }
-
-async function loadWallets(){
- try{
-  const {data, error}=await adm.from('wallets').select('*').order('balance',{ascending:false}).limit(100);
-  if(error) throw error;
-  allWallets=data||[]; const total=allWallets.reduce((a,b)=>a+Number(b.balance||0),0);
-  $('wCount').textContent=allWallets.length; $('totBal').textContent='₦'+total.toLocaleString();
-  $('wallets').innerHTML=allWallets.map(w=>{
-    const owner=allUsers.find(u=>u.id===w.user_id);
-    return `<div class="bg-black p-2 rounded mb-1 flex justify-between"><span>${owner?owner.email:w.user_id.slice(0,8)} — <b class="text-green-400">₦${Number(w.balance).toLocaleString()}</b></span><button onclick="document.getElementById('fundEmail').value='${w.user_id}'" class="bg-zinc-800 px-2 py-1 rounded text-[9px]">Select</button></div>`
-  }).join('')||'No wallets - user must login once OR run wallet trigger SQL';
- }catch(e){ $('wallets').innerHTML='Wallets error: '+e.message+'<br>Run: create table wallets if needed'; }
-}
-
-async function fundWallet(){ const idOrEmail=$('fundEmail').value.trim(); const amt=Number($('fundAmt').value); if(!idOrEmail||!amt) return alert('Enter email/id + amount');
- let userId=idOrEmail; if(idOrEmail.includes('@')){ const u=allUsers.find(x=>x.email===idOrEmail); if(!u) return alert('Email not found'); userId=u.id; }
- try{ const {data:ex}=await adm.from('wallets').select('*').eq('user_id',userId).single(); if(!ex){ await adm.from('wallets').insert({user_id:userId,balance:amt}); } else { await adm.from('wallets').update({balance:Number(ex.balance)+amt}).eq('user_id',userId); }
-  await adm.from('transactions').insert({user_id:userId, type:'credit', amount:amt, description:'Admin credit HQ V5'}).catch(()=>{});
-  alert('Credited ₦'+amt); loadWallets(); loadTxs(); }catch(e){ alert(e.message); }
-}
-async function debitWallet(){ const idOrEmail=$('fundEmail').value.trim(); const amt=Number($('fundAmt').value); if(!idOrEmail||!amt) return alert('Enter email/id + amount');
- let userId=idOrEmail; if(idOrEmail.includes('@')){ const u=allUsers.find(x=>x.email===idOrEmail); if(!u) return alert('Email not found'); userId=u.id; }
- try{ const {data:ex}=await adm.from('wallets').select('*').eq('user_id',userId).single(); if(!ex) return alert('No wallet'); await adm.from('wallets').update({balance:Math.max(0,Number(ex.balance)-amt)}).eq('user_id',userId);
-  await adm.from('transactions').insert({user_id:userId, type:'debit', amount:amt, description:'Admin debit HQ V5'}).catch(()=>{});
-  alert('Debited ₦'+amt); loadWallets(); loadTxs(); }catch(e){ alert(e.message); }
-}
-async function loadTxs(){ try{ const {data}=await adm.from('transactions').select('*').order('created_at',{ascending:false}).limit(50); $('txs').innerHTML=(data||[]).map(t=>`<div class="bg-black p-1 rounded mb-1 flex justify-between"><span>${t.type} ₦${t.amount} ${t.user_id.slice(0,6)}</span><span class="text-zinc-500 text-[9px]">${new Date(t.created_at).toLocaleString()}</span></div>`).join('')||'No transactions yet'; }catch(e){ $('txs').innerHTML='No transactions table — create it to log'; } }
-async function loadTickets(){ try{ const {data}=await adm.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(50); $('tCount').textContent=data?.length||0; $('tickets').innerHTML=(data||[]).map(t=>`<div class="bg-black p-2 rounded mb-1"><b>${t.email||''}</b> — ${t.issue||t.message||''}<div class="text-[9px] text-zinc-500">${new Date(t.created_at).toLocaleString()}</div></div>`).join('')||'No tickets'; }catch(e){ $('tickets').innerHTML='No tickets table'; } }
+function exportCSV(){ let csv='email,type,amount,description,date\n'+allTxs.map(t=>`"${usersMap[t.user_id]||t.user_id}",${t.type},${t.amount},"${(t.description||'').replace(/"/g,'')}",${t.created_at}`).join('\n'); let blob=new Blob([csv],{type:'text/csv'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='transactions.csv'; a.click(); }
 </script></body></html>
