@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V6.1 TRANSACTIONS PRO</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V6.2 FIXED</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
 <body class="bg-black text-white p-3"><div class="max-w-7xl mx-auto">
-<h1 class="text-xl font-black">👑 HQ V6.1 • Transactions Pro</h1>
-<p id="status" class="text-[10px] text-zinc-500 mb-2">Not connected - paste keys below</p>
+<h1 class="text-xl font-black">👑 HQ V6.2 • Transactions Pro FIXED</h1>
+<p id="status" class="text-[10px] text-zinc-500 mb-2">Not connected</p>
 
 <div class="grid grid-cols-4 gap-2 my-2 text-xs">
 <div class="bg-zinc-900 p-2 rounded">USERS <b id="uC" class="block text-lg">-</b></div>
@@ -28,7 +28,7 @@
 <button onclick="loadAll()" class="bg-zinc-800 px-3 py-2 rounded-xl text-xs">🔄 Refresh</button>
 </div>
 <div class="flex gap-2 flex-wrap items-center">
-<input id="txSearch" oninput="renderTxs()" placeholder="Search by email, type, desc..." class="bg-black p-2 rounded-xl text-xs flex-1 min-w-[160px]">
+<input id="txSearch" oninput="renderTxs()" placeholder="Search email/type..." class="bg-black p-2 rounded-xl text-xs flex-1 min-w-[160px]">
 <select id="txType" onchange="renderTxs()" class="bg-black p-2 rounded-xl text-xs">
 <option value="">All Types</option><option value="credit">credit</option><option value="debit">debit</option><option value="transfer">transfer</option><option value="airtime">airtime</option><option value="data">data</option>
 </select>
@@ -43,20 +43,20 @@
 const DEFAULT_URL="https://hhrcnxwnyisckttfylgq.supabase.co";
 let adm=null, usersMap={}, allTxs=[], allUsers=[];
 const $=id=>document.getElementById(id);
-let saved=JSON.parse(localStorage.getItem('hq61')||'{}');
+let saved=JSON.parse(localStorage.getItem('hq62')||'{}');
 $('u').value=saved.u||DEFAULT_URL; if(saved.k) $('k').value=saved.k; if(saved.s) $('s').value=saved.s;
-if(saved.u && saved.k && saved.s) { setTimeout(go,300); }
+if(saved.u && saved.k && saved.s) setTimeout(go,300);
 
 async function go(){
   const u=$('u').value.trim()||DEFAULT_URL, k=$('k').value.trim(), s=$('s').value.trim();
   if(!k||!s) return alert('Paste anon + service_role');
-  localStorage.setItem('hq61',JSON.stringify({u,k,s}));
-  $('status').textContent='Connecting to '+u+'...';
+  localStorage.setItem('hq62',JSON.stringify({u,k,s}));
+  $('status').textContent='Connecting...';
   try{
     adm=supabase.createClient(u,s);
     $('status').textContent='✅ Connected: '+u;
     await loadAll();
-  }catch(e){ $('err').textContent=e.message; $('status').textContent='❌ '+e.message; }
+  }catch(e){ $('err').textContent=e.message; }
 }
 async function loadAll(){
  try{
@@ -66,38 +66,48 @@ async function loadAll(){
   allUsers=uData.users||[]; usersMap={}; allUsers.forEach(x=>usersMap[x.id]=x.email); $('uC').textContent=allUsers.length;
 
   const {data:wData, error:wErr}=await adm.from('wallets').select('*');
-  if(wErr){ $('wC').textContent='No table'; } else { $('wC').textContent=wData?.length||0; $('tot').textContent='₦'+(wData||[]).reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString(); }
+  if(wErr) throw wErr;
+  $('wC').textContent=wData?.length||0;
+  $('tot').textContent='₦'+(wData||[]).reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString();
 
   const {data:txData, error:txErr}=await adm.from('transactions').select('*').order('created_at',{ascending:false}).limit(200);
-  if(txErr){ $('list').innerHTML='<div class="text-yellow-400">No transactions table yet. Run the SQL I gave you in Supabase SQL Editor.</div>'; $('txC').textContent='0'; allTxs=[]; }
-  else { allTxs=txData||[]; $('txC').textContent=allTxs.length; renderTxs(); }
- }catch(e){ $('err').textContent=e.message; $('list').innerHTML='Error: '+e.message; }
+  if(txErr) throw txErr;
+  allTxs=txData||[]; $('txC').textContent=allTxs.length; renderTxs();
+ }catch(e){
+   $('err').textContent=e.message;
+   if(e.message.includes('wallets')) $('wC').textContent='Error: Run SQL 1';
+   if(e.message.includes('transactions')) $('list').innerHTML='<div class="text-yellow-400">Run SQL 2 for transactions table: '+e.message+'</div>';
+   else $('list').innerHTML='Error: '+e.message;
+ }
 }
 function renderTxs(){
  let q=($('txSearch').value||'').toLowerCase(), typ=$('txType').value;
  let filtered=allTxs.filter(t=>{
-  let email=(usersMap[t.user_id]||t.user_id||'').toLowerCase();
-  return (!q||email.includes(q)||(t.type||'').toLowerCase().includes(q)||(t.description||'').toLowerCase().includes(q)) && (!typ||t.type===typ);
+  let email=(usersMap[t.user_id]||'').toLowerCase();
+  let matchQ =!q || email.includes(q) || (t.type||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q);
+  let matchT =!typ || t.type===typ;
+  return matchQ && matchT;
  });
- let sumC=0,sumD=0; filtered.forEach(t=>{ if(t.type==='credit') sumC+=Number(t.amount); else if(t.type==='debit'||t.type==='transfer'||t.type==='airtime'||t.type==='data') sumD+=Number(t.amount); });
+ let sumC=0,sumD=0; filtered.forEach(t=>{ if(t.type==='credit') sumC+=Number(t.amount); else sumD+=Number(t.amount); });
  $('sumC').textContent='₦'+sumC.toLocaleString(); $('sumD').textContent='₦'+sumD.toLocaleString();
- $('list').innerHTML=filtered.map(t=>`<div class="flex justify-between bg-black p-3 rounded-xl mb-2 border-l-4 ${t.type==='credit'?'border-green-500':'border-red-500'}"><div><b class="${t.type==='credit'?'text-green-400':'text-red-300'}">${(t.type||'').toUpperCase()} ₦${Number(t.amount).toLocaleString()}</b><div class="text-[11px] text-zinc-300">${usersMap[t.user_id]||t.user_id.slice(0,8)} • ${t.description||''}</div></div><div class="text-[9px] text-zinc-500 text-right">${new Date(t.created_at).toLocaleString()}<br><span class="bg-zinc-800 px-2 py-1 rounded text-[8px]">${t.status||'success'}</span></div></div>`).join('')||'<div class="text-zinc-500">No transactions yet - use +CREDIT to create first one</div>';
+ $('list').innerHTML=filtered.map(t=>`<div class="flex justify-between bg-black p-3 rounded-xl mb-2 border-l-4 ${t.type==='credit'?'border-green-500':'border-red-500'}"><div><b class="${t.type==='credit'?'text-green-400':'text-red-300'}">${(t.type||'').toUpperCase()} ₦${Number(t.amount).toLocaleString()}</b><div class="text-[11px]">${usersMap[t.user_id]||t.user_id.slice(0,8)} • ${t.description||''}</div></div><div class="text-[9px] text-right">${new Date(t.created_at).toLocaleString()}<br><span class="bg-zinc-800 px-2 py-1 rounded">${t.status||'ok'}</span></div></div>`).join('')||'<div class="text-zinc-500 p-4 text-center">No transactions yet - fund a user to create first tx</div>';
 }
 async function fund(dir){
- let em=$('fEmail').value.trim(), amt=Number($('fAmt').value); if(!em||!amt) return alert('Enter email + amount');
+ let em=$('fEmail').value.trim(), amt=Number($('fAmt').value); if(!em||!amt) return alert('email + amount needed');
  let uid=em.includes('@')? allUsers.find(u=>u.email.toLowerCase()===em.toLowerCase())?.id : em;
- if(!uid) return alert('User not found - make sure you Connected first and email is correct');
+ if(!uid) return alert('User not found - Connect first');
  try{
-   let {data:wal}=await adm.from('wallets').select('*').eq('user_id',uid).single();
-   let newBal=dir>0? (Number(wal?.balance||0)+amt) : Math.max(0,Number(wal?.balance||0)-amt);
-   if(!wal) { await adm.from('wallets').insert({user_id:uid,balance:newBal}); } else { await adm.from('wallets').update({balance:newBal}).eq('user_id',uid); }
-   await adm.from('transactions').insert({user_id:uid,type:dir>0?'credit':'debit',amount:amt,description: dir>0?'HQ V6.1 Admin Credit':'HQ V6.1 Admin Debit'});
-   alert((dir>0?'Credited ':'Debited ')+'₦'+amt+' to '+(usersMap[uid]||uid)); await loadAll();
+   let {data:wal} = await adm.from('wallets').select('*').eq('user_id',uid).maybeSingle();
+   let newBal = dir>0? (Number(wal?.balance||0)+amt) : Math.max(0,Number(wal?.balance||0)-amt);
+   if(!wal) await adm.from('wallets').insert({user_id:uid,balance:newBal});
+   else await adm.from('wallets').update({balance:newBal, updated_at:new Date().toISOString()}).eq('user_id',uid);
+   await adm.from('transactions').insert({user_id:uid,type:dir>0?'credit':'debit',amount:amt,description: dir>0?'HQ V6.2 Credit':'HQ V6.2 Debit'});
+   alert((dir>0?'Credited ':'Debited ')+'₦'+amt); await loadAll();
  }catch(e){ alert(e.message); $('err').textContent=e.message; }
 }
 function exportCSV(){
-  if(!allTxs.length) return alert('No tx to export');
-  let csv='email,user_id,type,amount,description,date\n'+allTxs.map(t=>`"${usersMap[t.user_id]||''}","${t.user_id}",${t.type},${t.amount},"${(t.description||'').replace(/"/g,'')}",${t.created_at}`).join('\n');
-  let blob=new Blob([csv],{type:'text/csv'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='transactions_'+Date.now()+'.csv'; a.click();
+  if(!allTxs.length) return alert('No tx');
+  let csv='email,type,amount,description,date\n'+allTxs.map(t=>`"${usersMap[t.user_id]||''}",${t.type},${t.amount},"${(t.description||'').replace(/"/g,'')}",${t.created_at}`).join('\n');
+  let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='tx_'+Date.now()+'.csv'; a.click();
 }
 </script></body></html>
