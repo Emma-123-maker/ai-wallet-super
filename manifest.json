@@ -1,9 +1,16 @@
 {
-  "name": "Emma Wallet - Real Payments",
-  "short_name": "Emma Wallet",
-  "start_url": "/ai-wallet-super/",
+  "name": "Emma Wallet Super - Real Money",
+  "short_name": "EmmaWallet",
+  "description": "AI Wallet with Paystack Live, Supabase, and Bills",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#6d28d9",
-  "icons": [{"src":"https://cdn-icons-png.flaticon.com/512/2830/2830284.png","sizes":"512x512","type":"image/png"}]
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2830/2830284.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
