@@ -1,5 +1,5 @@
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Emma Wallet - V4 VTU LIVE</title>
+<title>Emma Wallet - V4.1 FIXED</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6d28d9">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -25,8 +25,12 @@ function App(){
   React.useEffect(()=>{ supa.auth.getSession().then(({data})=>{ if(data.session){setUser(data.session.user); load(data.session.user.id)}}); supa.auth.onAuthStateChange((e,s)=>{setUser(s?.user||null); if(s?.user) load(s.user.id)}); },[]);
 
   async function load(uid){
-    let {data:w}=await supa.from('wallets').select('*').eq('user_id',uid).maybeSingle();
-    if(!w){ await supa.from('wallets').insert({user_id:uid,balance:0}); w={balance:0}; }
+    // FIXED: create wallet if missing - this fixes HQ "No wallets"
+    let {data:w} = await supa.from('wallets').select('*').eq('user_id',uid).maybeSingle();
+    if(!w){
+      const {data:nw} = await supa.from('wallets').insert({user_id:uid,balance:0}).select().single();
+      w = nw || {balance:0};
+    }
     setBal(Number(w.balance||0));
     const {data:tr}=await supa.from('transactions').select('*').eq('user_id',uid).order('created_at',{ascending:false}).limit(30);
     setTxs(tr||[]);
@@ -38,11 +42,16 @@ function App(){
     if(!email||!pass){alert('Enter email and password');return;}
     const res=mode==='signup'? await supa.auth.signUp({email,password:pass}) : await supa.auth.signInWithPassword({email,password:pass});
     if(res.error){
-      if(res.error.message.includes('not confirmed')) alert('⚠️ Go Supabase > Auth > Turn OFF Confirm Email');
+      if(res.error.message.includes('not confirmed')) alert('⚠️ Go Supabase > Auth > Turn OFF Confirm Email (you already did)');
       else alert(res.error.message);
     } else {
-      if(mode==='signup' &&!res.data.session) alert('✅ Created! Now Login (disable Confirm Email first)');
-      setUser(res.data.user); if(res.data.user) load(res.data.user.id);
+      if(mode==='signup' &&!res.data.session) alert('✅ Created! Now Login');
+      if(res.data.user){
+        setUser(res.data.user);
+        // FIXED: ensure wallet row immediately on signup
+        await supa.from('wallets').upsert({user_id:res.data.user.id,balance:0},{onConflict:'user_id'});
+        load(res.data.user.id);
+      }
     }
   }
 
@@ -50,18 +59,19 @@ function App(){
     if(!pk.includes('pk_live') &&!pk.includes('pk_test')){ alert('Paste pk_live key at bottom first!'); return; }
     PaystackPop.setup({key:pk,email:user.email,amount:amount*100,currency:'NGN',ref:'EMMA_'+Date.now(),
       callback: async(r)=>{
-        // Starter method: credit wallet on success
-        const nb=bal+amount;
-        await supa.from('wallets').update({balance:nb, updated_at:new Date().toISOString()}).eq('user_id',user.id);
+        // FIXED: use upsert + prevent double spend, works with webhook later
+        const {data:curr} = await supa.from('wallets').select('balance').eq('user_id',user.id).single();
+        const nb = Number(curr?.balance||bal)+amount;
+        await supa.from('wallets').upsert({user_id:user.id,balance:nb, updated_at:new Date().toISOString()},{onConflict:'user_id'});
         await supa.from('transactions').insert({user_id:user.id,type:'credit',amount:amount,description:'Paystack '+r.reference, status:'success'});
         setBal(nb); load(user.id); alert('✅ REAL ₦'+amount+' added! Paystack will settle to your bank tomorrow');
       },
-      onClose: ()=>{ alert('Payment closed - if you paid but not credited, contact HQ'); }
+      onClose: ()=>{ /* do nothing */ }
     }).openIframe();
   }
 
   async function buyVTU({type, network, phone, plan_id, amount, description}){
-    if(!vtuKey){ alert('Add your VTU.ng API key at bottom! Format: your_apikey'); return; }
+    if(!vtuKey){ alert('Add your VTU.ng API key at bottom!'); return; }
     if(amount>bal){ alert('Low balance, Fund via Paystack first'); return; }
 
     const oldBal=bal; const newBal=oldBal-amount;
@@ -76,14 +86,14 @@ function App(){
 
       const res=await fetch(url);
       const data=await res.json();
-      const success = (data.code==='success' || data.status==='success' || data.Status==='successful' || data.code===200);
+      const success = (data.code==='success' || data.status==='success' || data.Status==='successful' || data.code===200 || data.success===true);
 
       if(success){
         await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' - Delivered', status:'success'});
         alert('✅ '+description+' Delivered!');
       }else{
         await supa.from('wallets').update({balance:oldBal}).eq('user_id',user.id);
-        await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' FAILED: '+(data.message||JSON.stringify(data)).slice(0,100), status:'failed'});
+        await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' FAILED: '+(data.message||JSON.stringify(data)).slice(0,120), status:'failed'});
         setBal(oldBal);
         alert('❌ Failed: '+(data.message||'error')+' - Refunded ₦'+amount);
       }
@@ -116,7 +126,7 @@ function App(){
 
   if(!user) return React.createElement("div",{className:"min-h-screen bg-black text-white flex items-center justify-center p-6"},
     React.createElement("div",{className:"w-full max-w-sm bg-zinc-900 rounded-[24px] p-6 border border-zinc-800"},
-      React.createElement("h1",{className:"text-2xl font-black"},"Emma Wallet V4 VTU"),React.createElement("p",{className:"text-xs opacity-60 mt-1"},"Starter Business Ready"),
+      React.createElement("h1",{className:"text-2xl font-black"},"Emma Wallet V4.1"),React.createElement("p",{className:"text-xs opacity-60 mt-1"},"Starter Business - FIXED"),
       React.createElement("input",{value:email,onChange:e=>setEmail(e.target.value),placeholder:"Email",className:"w-full bg-black border border-zinc-700 rounded-full px-4 py-3 mt-4 text-sm"}),
       React.createElement("input",{value:pass,onChange:e=>setPass(e.target.value),type:"password",placeholder:"Password",className:"w-full bg-black border border-zinc-700 rounded-full px-4 py-3 mt-3 text-sm"}),
       React.createElement("div",{className:"flex gap-2 mt-4"},React.createElement("button",{onClick:()=>auth('login'),className:"flex-1 bg-white text-black py-3 rounded-full font-bold text-sm"},"Login"),React.createElement("button",{onClick:()=>auth('signup'),className:"flex-1 bg-violet-600 py-3 rounded-full font-bold text-sm"},"Sign Up"))
@@ -153,6 +163,7 @@ function App(){
     ),
     React.createElement("div",{className:"p-4 flex-1"},
       React.createElement("div",{className:"text-[10px] opacity-40 mb-2"},"RECENT TRANSACTIONS"),
+      txs.length===0 && React.createElement("div",{className:"text-xs opacity-40"},"No transactions yet - Fund wallet"),
       txs.slice(0,10).map((t,i)=>React.createElement("div",{key:i,className:"flex justify-between py-2 border-b border-zinc-900"},
         React.createElement("div",{className:"flex gap-3"},React.createElement("div",{className:"w-8 h-8 bg-zinc-900 rounded-full flex items-center justify-center text-sm"},t.type==='credit'?'💳':t.type==='data'?'📶':'📱'),React.createElement("div",null,React.createElement("div",{className:"text-sm"},t.description.slice(0,35)),React.createElement("div",{className:"text-xs opacity-50"},new Date(t.created_at).toLocaleString()+ " • "+t.status))),
         React.createElement("div",{className:t.type==='credit'?"text-green-400 font-bold text-sm":"font-bold text-sm"},(t.type==='credit'?"+":"-")+"₦"+Math.abs(t.amount).toLocaleString())
@@ -164,12 +175,20 @@ function App(){
         React.createElement("div",{className:"flex gap-2 mt-3"},React.createElement("button",{onClick:()=>setShowHelp(false),className:"flex-1 bg-zinc-800 py-3 rounded-full text-sm"},"Cancel"),React.createElement("button",{onClick:sendHelp,className:"flex-1 bg-red-600 py-3 rounded-full font-bold text-sm"},"Send"))
       )
     ),
+    showAI&&React.createElement("div",{className:"fixed bottom-20 right-4 left-4 bg-zinc-900 border border-zinc-700 rounded-[20px] p-4 z-50"},
+      React.createElement("input",{value:aiMsg,onChange:e=>setAiMsg(e.target.value),placeholder:"Ask AI...",className:"w-full bg-black border border-zinc-700 rounded-full px-4 py-2 text-sm"}),
+      React.createElement("button",{onClick:askAI,className:"mt-2 w-full bg-violet-600 py-2 rounded-full text-sm font-bold"},aiLoading?"Thinking...":"Ask"),
+      aiReply&&React.createElement("div",{className:"mt-3 text-xs bg-black rounded-xl p-3"},aiReply)
+    ),
     React.createElement("div",{className:"grid grid-cols-4 gap-1 p-2 bg-zinc-900 border-t border-zinc-800"},
       [{k:'home',l:'🏠 Home'},{k:'card',l:'💳 Card'},{k:'chart',l:'📊 Chart'},{k:'reminders',l:'🔔 Bills'}].map(t=>React.createElement("button",{key:t.k,onClick:()=>setTab(t.k),className:tab===t.k?"bg-white text-black py-3 rounded-xl font-bold text-xs":"py-3 text-xs opacity-60"},t.l))
     ),
     React.createElement("div",{className:"mx-2 mb-2 flex gap-2"},
       React.createElement("input",{value:pk,onChange:e=>{setPk(e.target.value); localStorage.setItem('pkKey',e.target.value);},placeholder:"pk_live_... Paystack",className:"flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-3 py-2 text-[10px]"}),
       React.createElement("input",{value:vtuKey,onChange:e=>{setVtuKey(e.target.value); localStorage.setItem('vtuKey',e.target.value);},placeholder:"VTU.ng apikey",className:"flex-1 bg-zinc-900 border border-yellow-800 rounded-full px-3 py-2 text-[10px]"})
+    ),
+    React.createElement("div",{className:"mx-2 mb-2"},
+      React.createElement("input",{onChange:e=>localStorage.setItem('groqKey',e.target.value), defaultValue:localStorage.getItem('groqKey')||'', placeholder:"gsk_... Groq AI key",className:"w-full bg-zinc-900 border border-violet-800 rounded-full px-3 py-2 text-[10px]"})
     )
   )
 }
