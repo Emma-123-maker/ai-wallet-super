@@ -1,5 +1,6 @@
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Emma Wallet - V4 VTU LIVE</title><link rel="manifest" href="manifest.json">
+<title>Emma Wallet - V4 VTU LIVE</title>
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6d28d9">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://js.paystack.co/v1/inline.js"></script>
@@ -12,16 +13,13 @@
 const SUPA_URL="https://hhrcnxwnyisckttfylgq.supabase.co";
 const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhocmNueHdueWlzY2t0dGZ5bGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTIzMzIsImV4cCI6MjEwNjU2ODMzMn0.RhfUvE_lnLCKRhl7lLWRoXDu4Qqsa74OaPiFVRYkQ-s";
 const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
-
-// === PUT YOUR VTU.NG KEY HERE ===
-const VTU_API_KEY = localStorage.getItem('vtuKey') || "";
 const VTU_BASE = "https://vtu.ng/wp-json/api/v1";
 
 function App(){
   const [user,setUser]=React.useState(null); const [email,setEmail]=React.useState(""); const [pass,setPass]=React.useState("");
   const [bal,setBal]=React.useState(0); const [txs,setTxs]=React.useState([]); const [tab,setTab]=React.useState('home');
   const [showAI,setShowAI]=React.useState(false); const [aiMsg,setAiMsg]=React.useState(""); const [aiReply,setAiReply]=React.useState(""); const [aiLoading,setAiLoading]=React.useState(false);
-  const [pk,setPk]=React.useState(localStorage.getItem('pkKey')||''); const [vtuKey,setVtuKey]=React.useState(VTU_API_KEY);
+  const [pk,setPk]=React.useState(localStorage.getItem('pkKey')||''); const [vtuKey,setVtuKey]=React.useState(localStorage.getItem('vtuKey')||"");
   const [showHelp,setShowHelp]=React.useState(false); const [helpMsg,setHelpMsg]=React.useState(""); const [myTickets,setMyTickets]=React.useState([]);
 
   React.useEffect(()=>{ supa.auth.getSession().then(({data})=>{ if(data.session){setUser(data.session.user); load(data.session.user.id)}}); supa.auth.onAuthStateChange((e,s)=>{setUser(s?.user||null); if(s?.user) load(s.user.id)}); },[]);
@@ -49,50 +47,45 @@ function App(){
   }
 
   function fund(amount){
-    if(!pk.includes('live')){ alert('Add pk_live key first! Tap 🔑'); return; }
+    if(!pk.includes('pk_live') &&!pk.includes('pk_test')){ alert('Paste pk_live key at bottom first!'); return; }
     PaystackPop.setup({key:pk,email:user.email,amount:amount*100,currency:'NGN',ref:'EMMA_'+Date.now(),
       callback: async(r)=>{
+        // Starter method: credit wallet on success
         const nb=bal+amount;
         await supa.from('wallets').update({balance:nb, updated_at:new Date().toISOString()}).eq('user_id',user.id);
         await supa.from('transactions').insert({user_id:user.id,type:'credit',amount:amount,description:'Paystack '+r.reference, status:'success'});
-        setBal(nb); load(user.id); alert('✅ REAL ₦'+amount+' added!');
-      }
+        setBal(nb); load(user.id); alert('✅ REAL ₦'+amount+' added! Paystack will settle to your bank tomorrow');
+      },
+      onClose: ()=>{ alert('Payment closed - if you paid but not credited, contact HQ'); }
     }).openIframe();
   }
 
-  // === NEW VTU BUY LOGIC ===
   async function buyVTU({type, network, phone, plan_id, amount, description}){
-    if(!vtuKey){ alert('Add your VTU.ng API key at bottom first!'); return; }
-    if(amount>bal){ alert('Low balance, Fund via Paystack'); return; }
+    if(!vtuKey){ alert('Add your VTU.ng API key at bottom! Format: your_apikey'); return; }
+    if(amount>bal){ alert('Low balance, Fund via Paystack first'); return; }
 
     const oldBal=bal; const newBal=oldBal-amount;
-    // debit first
     await supa.from('wallets').update({balance:newBal, updated_at:new Date().toISOString()}).eq('user_id',user.id);
     setBal(newBal);
     await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' - PENDING', status:'pending'});
 
     try{
       let url="";
-      if(type==='airtime') url=`${VTU_BASE}/airtime?username=${vtuKey.split(':')[0]}&password=${vtuKey.split(':')[1]||vtuKey}&phone=${phone}&network_id=${network}&amount=${amount}`;
-      // for vtu.ng simple apikey format:?apikey=KEY
-      // try both formats
-      if(type==='airtime' &&!url.includes('apikey')) url=`${VTU_BASE}/airtime?apikey=${vtuKey}&network=${network}&phone=${phone}&amount=${amount}`;
+      if(type==='airtime') url=`${VTU_BASE}/airtime?apikey=${vtuKey}&network=${network}&phone=${phone}&amount=${amount}`;
       if(type==='data') url=`${VTU_BASE}/data?apikey=${vtuKey}&network=${network}&phone=${phone}&data_plan=${plan_id}`;
 
-      // If you use ClubKonnect format, change to: https://klubkonnect.net/api/airtime/ etc
       const res=await fetch(url);
       const data=await res.json();
+      const success = (data.code==='success' || data.status==='success' || data.Status==='successful' || data.code===200);
 
-      const success = (data.code==='success' || data.status==='success' || data.Status==='successful');
       if(success){
-        await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' - '+ (data.message||'Delivered'), status:'success'});
-        alert('✅ '+description+' Delivered! '+(data.message||''));
+        await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' - Delivered', status:'success'});
+        alert('✅ '+description+' Delivered!');
       }else{
-        // refund
         await supa.from('wallets').update({balance:oldBal}).eq('user_id',user.id);
-        await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' FAILED: '+(data.message||JSON.stringify(data)).slice(0,80), status:'failed'});
+        await supa.from('transactions').insert({user_id:user.id,type:type,amount:amount,description: description+' FAILED: '+(data.message||JSON.stringify(data)).slice(0,100), status:'failed'});
         setBal(oldBal);
-        alert('❌ VTU Failed: '+(data.message||'error')+' - Refunded ₦'+amount);
+        alert('❌ Failed: '+(data.message||'error')+' - Refunded ₦'+amount);
       }
     }catch(e){
       await supa.from('wallets').update({balance:oldBal}).eq('user_id',user.id);
@@ -103,7 +96,6 @@ function App(){
   }
 
   async function spend(amount,desc){
-    // for bills that don't need VTU yet
     if(amount>bal){alert('Fund real money first'); return;}
     const nb=bal-amount;
     await supa.from('wallets').update({balance:nb, updated_at:new Date().toISOString()}).eq('user_id',user.id);
@@ -114,8 +106,7 @@ function App(){
   async function sendHelp(){
     if(!helpMsg.trim()) return;
     await supa.from('support_tickets').insert({user_id:user.id,email:user.email,issue:helpMsg,screen:tab});
-    setHelpMsg(""); setShowHelp(false); alert('✅ Sent to Founder HQ');
-    load(user.id);
+    setHelpMsg(""); setShowHelp(false); alert('✅ Sent to Founder HQ'); load(user.id);
   }
 
   async function askAI(){
@@ -125,7 +116,7 @@ function App(){
 
   if(!user) return React.createElement("div",{className:"min-h-screen bg-black text-white flex items-center justify-center p-6"},
     React.createElement("div",{className:"w-full max-w-sm bg-zinc-900 rounded-[24px] p-6 border border-zinc-800"},
-      React.createElement("h1",{className:"text-2xl font-black"},"Emma Wallet V4 VTU"),React.createElement("p",{className:"text-xs opacity-60 mt-1"},"VTU LIVE + HQ Transactions"),
+      React.createElement("h1",{className:"text-2xl font-black"},"Emma Wallet V4 VTU"),React.createElement("p",{className:"text-xs opacity-60 mt-1"},"Starter Business Ready"),
       React.createElement("input",{value:email,onChange:e=>setEmail(e.target.value),placeholder:"Email",className:"w-full bg-black border border-zinc-700 rounded-full px-4 py-3 mt-4 text-sm"}),
       React.createElement("input",{value:pass,onChange:e=>setPass(e.target.value),type:"password",placeholder:"Password",className:"w-full bg-black border border-zinc-700 rounded-full px-4 py-3 mt-3 text-sm"}),
       React.createElement("div",{className:"flex gap-2 mt-4"},React.createElement("button",{onClick:()=>auth('login'),className:"flex-1 bg-white text-black py-3 rounded-full font-bold text-sm"},"Login"),React.createElement("button",{onClick:()=>auth('signup'),className:"flex-1 bg-violet-600 py-3 rounded-full font-bold text-sm"},"Sign Up"))
@@ -134,13 +125,13 @@ function App(){
 
   return React.createElement("div",{className:"min-h-screen bg-[#0a0a0a] text-white max-w-[390px] mx-auto flex flex-col"},
     React.createElement("div",{className:"p-4 flex justify-between items-center"},
-      React.createElement("div",{className:"flex gap-2 items-center"},React.createElement("div",{className:"w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-full flex items-center justify-center font-bold"},"EW"),React.createElement("div",null,React.createElement("div",{className:"text-xs opacity-60 truncate max-w-[120px]"},user.email),React.createElement("div",{className:"font-bold text-sm"},"₦"+bal.toLocaleString()+" • LIVE VTU"))),
+      React.createElement("div",{className:"flex gap-2 items-center"},React.createElement("div",{className:"w-10 h-10 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-full flex items-center justify-center font-bold"},"EW"),React.createElement("div",null,React.createElement("div",{className:"text-xs opacity-60 truncate max-w-[120px]"},user.email),React.createElement("div",{className:"font-bold text-sm"},"₦"+bal.toLocaleString()+" • Starter"))),
       React.createElement("div",{className:"flex gap-2"},React.createElement("button",{onClick:()=>setShowHelp(true),className:"w-8 h-8 bg-red-600 rounded-full text-xs font-bold"},"🆘"),React.createElement("button",{onClick:()=>supa.auth.signOut().then(()=>setUser(null)),className:"w-8 h-8 bg-zinc-800 rounded-full text-xs"},"🚪"),React.createElement("button",{onClick:()=>setShowAI(!showAI),className:"w-8 h-8 bg-white text-black rounded-full"},"🤖"))
     ),
     myTickets.length>0 && myTickets[0].response && React.createElement("div",{className:"mx-4 bg-green-900/40 border border-green-700 rounded-2xl p-3 text-xs"},React.createElement("b",{className:"text-green-400"},"👑 Founder: "),myTickets[0].response),
     tab==='home'&&React.createElement("div",{className:"flex flex-col gap-3"},
       React.createElement("div",{className:"mx-4 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 rounded-[24px] p-5"},
-        React.createElement("div",{className:"text-sm opacity-80"},"Real Balance • Supabase • VTU Ready"),React.createElement("div",{className:"text-3xl font-black mt-1"},"₦"+bal.toLocaleString()),
+        React.createElement("div",{className:"text-sm opacity-80"},"Real Balance • Starter Business"),React.createElement("div",{className:"text-3xl font-black mt-1"},"₦"+bal.toLocaleString()),
         React.createElement("div",{className:"flex gap-2 mt-4"},
           React.createElement("button",{onClick:()=>{const a=parseInt(prompt('Fund how much? ₦')); if(a) fund(a);},className:"flex-1 bg-white text-black py-3 rounded-full font-bold text-sm"},"💳 Fund"),
           React.createElement("button",{onClick:()=>{const a=parseInt(prompt('Send to friend - amount?')); if(a) spend(a,'Transfer to friend');},className:"flex-1 bg-black/30 py-3 rounded-full font-bold text-sm"},"Send")
@@ -152,26 +143,16 @@ function App(){
             const ph=prompt('Phone number?'); const net=prompt('Network: 1=MTN 2=Glo 3=9mobile 4=Airtel'); const amt=parseInt(prompt('Amount? e.g 500'));
             if(ph&&net&&amt) buyVTU({type:'airtime', network:net, phone:ph, amount:amt, description:`Airtime ${net} to ${ph}`});
           } else if(b.t==='data'){
-            const ph=prompt('Phone?'); const net=prompt('Network 1=MTN 2=Glo 3=9mobile 4=Airtel'); const pid=prompt('Plan ID? (check VTU.ng plans - e.g 1 for 500MB)'); const amt=parseInt(prompt('Price? e.g 350'));
-            if(ph&&net&&pid&&amt) buyVTU({type:'data', network:net, phone:ph, plan_id:pid, amount:amt, description:`Data Plan ${pid} to ${ph}`});
+            const ph=prompt('Phone?'); const net=prompt('Network 1=MTN 2=Glo 3=9mobile 4=Airtel'); const pid=prompt('Plan ID? (check VTU.ng - e.g 1)'); const amt=parseInt(prompt('Price? e.g 350'));
+            if(ph&&net&&pid&&amt) buyVTU({type:'data', network:net, phone:ph, plan_id:pid, amount:amt, description:`Data ${pid} to ${ph}`});
           } else {
             const a=parseInt(prompt(b.n+' amount?')); if(a) spend(a,b.n);
           }
         },className:"bg-zinc-900 border border-zinc-800 rounded-2xl p-3 text-center"},React.createElement("div",{className:"text-lg"},b.i),React.createElement("div",{className:"text-xs mt-1"},b.n)))
       )
     ),
-    tab==='card'&&React.createElement("div",{className:"mx-4"},
-      React.createElement("div",{className:"rounded-[24px] p-5 h-[200px] bg-gradient-to-br from-zinc-900 to-black border border-zinc-700"},
-        React.createElement("div",{className:"flex justify-between text-xs opacity-60"},React.createElement("span",null,"EMMA WALLET • VTU"),React.createElement("span",{className:"font-black italic"},"Verve")),
-        React.createElement("div",{className:"mt-8 font-mono tracking-widest"},"5399 4587 1234 5678"),React.createElement("div",{className:"flex justify-between mt-6"},React.createElement("div",null,React.createElement("div",{className:"text-[10px] opacity-60"},"HOLDER"),React.createElement("div",{className:"text-sm font-bold"},user.email.split('@')[0].toUpperCase())),React.createElement("div",null,React.createElement("div",{className:"text-[10px] opacity-60"},"BAL"),React.createElement("div",{className:"text-sm font-bold"},"₦"+bal.toLocaleString())))
-      )
-    ),
-    tab==='chart'&&React.createElement("div",{className:"mx-4 bg-zinc-900 border border-zinc-800 rounded-[24px] p-5"},
-      React.createElement("div",{className:"text-xs opacity-60"},"Live from Supabase"),React.createElement("div",{className:"text-2xl font-black"},"₦"+Math.abs(txs.filter(t=>t.type!=='credit').reduce((s,t)=>s+Number(t.amount),0)).toLocaleString()),
-      txs.map((t,i)=>React.createElement("div",{key:i,className:"flex justify-between text-xs mt-2"},React.createElement("span",null,t.description),React.createElement("span",{className:t.type==='credit'?"text-green-400":"text-red-400"},(t.type==='credit'?"+":"-")+"₦"+Math.abs(t.amount))))
-    ),
     React.createElement("div",{className:"p-4 flex-1"},
-      React.createElement("div",{className:"text-[10px] opacity-40 mb-2"},"RECENT • Goes to HQ V6.2"),
+      React.createElement("div",{className:"text-[10px] opacity-40 mb-2"},"RECENT TRANSACTIONS"),
       txs.slice(0,10).map((t,i)=>React.createElement("div",{key:i,className:"flex justify-between py-2 border-b border-zinc-900"},
         React.createElement("div",{className:"flex gap-3"},React.createElement("div",{className:"w-8 h-8 bg-zinc-900 rounded-full flex items-center justify-center text-sm"},t.type==='credit'?'💳':t.type==='data'?'📶':'📱'),React.createElement("div",null,React.createElement("div",{className:"text-sm"},t.description.slice(0,35)),React.createElement("div",{className:"text-xs opacity-50"},new Date(t.created_at).toLocaleString()+ " • "+t.status))),
         React.createElement("div",{className:t.type==='credit'?"text-green-400 font-bold text-sm":"font-bold text-sm"},(t.type==='credit'?"+":"-")+"₦"+Math.abs(t.amount).toLocaleString())
@@ -183,20 +164,12 @@ function App(){
         React.createElement("div",{className:"flex gap-2 mt-3"},React.createElement("button",{onClick:()=>setShowHelp(false),className:"flex-1 bg-zinc-800 py-3 rounded-full text-sm"},"Cancel"),React.createElement("button",{onClick:sendHelp,className:"flex-1 bg-red-600 py-3 rounded-full font-bold text-sm"},"Send"))
       )
     ),
-    showAI&&React.createElement("div",{className:"fixed inset-0 bg-black/80 z-50 flex flex-col"},
-      React.createElement("div",{className:"bg-zinc-900 rounded-t-[24px] mt-auto p-4 min-h-[60vh]"},
-        React.createElement("div",{className:"flex justify-between"},React.createElement("b",null,"🤖 AI Wallet"),React.createElement("button",{onClick:()=>setShowAI(false),className:"w-8 h-8 bg-zinc-800 rounded-full"},"✕")),
-        React.createElement("div",{className:"mt-4 bg-zinc-800 rounded-2xl p-3 text-sm"},aiReply||"Ask me anything!"),
-        React.createElement("div",{className:"flex gap-2 mt-4"},React.createElement("input",{value:aiMsg,onChange:e=>setAiMsg(e.target.value),placeholder:"Ask AI...",className:"flex-1 bg-black border border-zinc-700 rounded-full px-4 py-3 text-sm"}),React.createElement("button",{onClick:askAI,className:"bg-white text-black w-12 h-12 rounded-full"},aiLoading?"...":"➤"))
-      )
-    ),
     React.createElement("div",{className:"grid grid-cols-4 gap-1 p-2 bg-zinc-900 border-t border-zinc-800"},
       [{k:'home',l:'🏠 Home'},{k:'card',l:'💳 Card'},{k:'chart',l:'📊 Chart'},{k:'reminders',l:'🔔 Bills'}].map(t=>React.createElement("button",{key:t.k,onClick:()=>setTab(t.k),className:tab===t.k?"bg-white text-black py-3 rounded-xl font-bold text-xs":"py-3 text-xs opacity-60"},t.l))
     ),
     React.createElement("div",{className:"mx-2 mb-2 flex gap-2"},
       React.createElement("input",{value:pk,onChange:e=>{setPk(e.target.value); localStorage.setItem('pkKey',e.target.value);},placeholder:"pk_live_... Paystack",className:"flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-3 py-2 text-[10px]"}),
-      React.createElement("input",{value:vtuKey,onChange:e=>{setVtuKey(e.target.value); localStorage.setItem('vtuKey',e.target.value);},placeholder:"VTU.ng apikey",className:"flex-1 bg-zinc-900 border border-yellow-800 rounded-full px-3 py-2 text-[10px]"}),
-      React.createElement("input",{placeholder:"groqKey",onChange:e=>localStorage.setItem('groqKey',e.target.value),className:"w-20 bg-zinc-900 border border-zinc-800 rounded-full px-2 py-2 text-[10px]"})
+      React.createElement("input",{value:vtuKey,onChange:e=>{setVtuKey(e.target.value); localStorage.setItem('vtuKey',e.target.value);},placeholder:"VTU.ng apikey",className:"flex-1 bg-zinc-900 border border-yellow-800 rounded-full px-3 py-2 text-[10px]"})
     )
   )
 }
