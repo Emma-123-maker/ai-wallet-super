@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V6.2 FIXED</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ V7 - Starter Business</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
 <body class="bg-black text-white p-3"><div class="max-w-7xl mx-auto">
-<h1 class="text-xl font-black">👑 HQ V6.2 • Transactions Pro FIXED</h1>
+<h1 class="text-xl font-black">👑 HQ V7 • Emma Wallet - Starter</h1>
 <p id="status" class="text-[10px] text-zinc-500 mb-2">Not connected</p>
 
 <div class="grid grid-cols-4 gap-2 my-2 text-xs">
 <div class="bg-zinc-900 p-2 rounded">USERS <b id="uC" class="block text-lg">-</b></div>
-<div class="bg-zinc-900 p-2 rounded">WALLETS <b id="wC" class="block text-lg">-</b></div>
-<div class="bg-zinc-900 p-2 rounded text-green-400">TOTAL ₦ <b id="tot" class="block text-lg">0</b></div>
+<div class="bg-violet-900/40 border border-violet-700 p-2 rounded">WALLETS TOTAL <b id="tot" class="block text-lg text-violet-300">₦0</b></div>
 <div class="bg-zinc-900 p-2 rounded">TXs <b id="txC" class="block text-lg">-</b></div>
+<div class="bg-yellow-900/30 border border-yellow-700 p-2 rounded">FAILED <b id="failC" class="block text-lg text-yellow-300">0</b></div>
 </div>
 
 <div class="flex gap-2 mb-2">
 <input id="u" class="flex-1 bg-zinc-900 p-3 rounded-xl text-[10px]" placeholder="https://...supabase.co">
 <input id="k" class="flex-1 bg-zinc-900 p-3 rounded-xl text-[10px]" placeholder="anon eyJ...">
-<input id="s" class="flex-1 bg-zinc-900 border-2 border-yellow-500 p-3 rounded-xl text-[10px]" placeholder="service_role eyJ... LONGER">
+<input id="s" class="flex-1 bg-zinc-900 border-2 border-yellow-500 p-3 rounded-xl text-[10px]" placeholder="service_role eyJ...">
 <button onclick="go()" class="bg-white text-black px-5 py-2 rounded-xl font-bold text-xs">Connect</button>
 </div>
 
@@ -28,20 +28,33 @@
 <button onclick="loadAll()" class="bg-zinc-800 px-3 py-2 rounded-xl text-xs">🔄 Refresh</button>
 </div>
 <div class="flex gap-2 flex-wrap items-center">
-<input id="txSearch" oninput="renderTxs()" placeholder="Search email/type..." class="bg-black p-2 rounded-xl text-xs flex-1 min-w-[160px]">
-<select id="txType" onchange="renderTxs()" class="bg-black p-2 rounded-xl text-xs">
-<option value="">All Types</option><option value="credit">credit</option><option value="debit">debit</option><option value="transfer">transfer</option><option value="airtime">airtime</option><option value="data">data</option>
+<input id="txSearch" oninput="renderAll()" placeholder="Search email / phone / type..." class="bg-black p-2 rounded-xl text-xs flex-1 min-w-[160px]">
+<select id="txType" onchange="renderAll()" class="bg-black p-2 rounded-xl text-xs">
+<option value="">All Types</option><option value="credit">credit (Paystack)</option><option value="airtime">airtime</option><option value="data">data</option><option value="debit">debit</option>
 </select>
 <span class="text-[10px]">IN: <b id="sumC" class="text-green-400">₦0</b> | OUT: <b id="sumD" class="text-red-400">₦0</b></span>
 </div>
+<p class="text-[9px] opacity-40 mt-2">Starter Mode: All money goes to your ONE Paystack balance (check Paystack Dashboard). This HQ only controls Supabase wallet balance.</p>
 </div>
 
-<div id="list" class="bg-zinc-900 rounded-xl p-3 text-xs min-h-[40vh]">Connect first...</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+<div class="lg:col-span-2" id="list" class="bg-zinc-900 rounded-xl p-3 text-xs min-h-[40vh]">Connect first...</div>
+<div>
+<div class="bg-zinc-900 rounded-xl p-3 text-xs mb-3">
+<b class="text-sm">👥 Users & Wallets</b>
+<div id="usersList" class="mt-2 max-h-[300px] overflow-auto"></div>
+</div>
+<div class="bg-zinc-900 rounded-xl p-3 text-xs">
+<b class="text-sm">🆘 Support Tickets</b>
+<div id="tickets" class="mt-2">-</div>
+</div>
+</div>
+</div>
 <p id="err" class="text-[9px] text-red-400 mt-2 break-all"></p>
 </div>
 <script>
 const DEFAULT_URL="https://hhrcnxwnyisckttfylgq.supabase.co";
-let adm=null, usersMap={}, allTxs=[], allUsers=[];
+let adm=null, usersMap={}, allTxs=[], allUsers=[], allWallets=[], allTickets=[];
 const $=id=>document.getElementById(id);
 let saved=JSON.parse(localStorage.getItem('hq62')||'{}');
 $('u').value=saved.u||DEFAULT_URL; if(saved.k) $('k').value=saved.k; if(saved.s) $('s').value=saved.s;
@@ -67,47 +80,56 @@ async function loadAll(){
 
   const {data:wData, error:wErr}=await adm.from('wallets').select('*');
   if(wErr) throw wErr;
-  $('wC').textContent=wData?.length||0;
-  $('tot').textContent='₦'+(wData||[]).reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString();
+  allWallets=wData||[];
+  $('tot').textContent='₦'+(allWallets||[]).reduce((a,b)=>a+Number(b.balance||0),0).toLocaleString();
 
-  const {data:txData, error:txErr}=await adm.from('transactions').select('*').order('created_at',{ascending:false}).limit(200);
+  const {data:txData, error:txErr}=await adm.from('transactions').select('*').order('created_at',{ascending:false}).limit(300);
   if(txErr) throw txErr;
-  allTxs=txData||[]; $('txC').textContent=allTxs.length; renderTxs();
+  allTxs=txData||[]; $('txC').textContent=allTxs.length;
+  $('failC').textContent=allTxs.filter(t=>t.status==='failed').length;
+
+  const {data:tkData}=await adm.from('support_tickets').select('*').order('created_at',{ascending:false}).limit(20);
+  allTickets=tkData||[];
+
+  renderAll();
  }catch(e){
    $('err').textContent=e.message;
-   if(e.message.includes('wallets')) $('wC').textContent='Error: Run SQL 1';
-   if(e.message.includes('transactions')) $('list').innerHTML='<div class="text-yellow-400">Run SQL 2 for transactions table: '+e.message+'</div>';
-   else $('list').innerHTML='Error: '+e.message;
+   $('list').innerHTML='Error: '+e.message;
  }
 }
-function renderTxs(){
+function renderAll(){
  let q=($('txSearch').value||'').toLowerCase(), typ=$('txType').value;
  let filtered=allTxs.filter(t=>{
   let email=(usersMap[t.user_id]||'').toLowerCase();
-  let matchQ =!q || email.includes(q) || (t.type||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q);
-  let matchT =!typ || t.type===typ;
-  return matchQ && matchT;
+  return (!q || email.includes(q) || (t.type||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q)) && (!typ || t.type===typ);
  });
  let sumC=0,sumD=0; filtered.forEach(t=>{ if(t.type==='credit') sumC+=Number(t.amount); else sumD+=Number(t.amount); });
  $('sumC').textContent='₦'+sumC.toLocaleString(); $('sumD').textContent='₦'+sumD.toLocaleString();
- $('list').innerHTML=filtered.map(t=>`<div class="flex justify-between bg-black p-3 rounded-xl mb-2 border-l-4 ${t.type==='credit'?'border-green-500':'border-red-500'}"><div><b class="${t.type==='credit'?'text-green-400':'text-red-300'}">${(t.type||'').toUpperCase()} ₦${Number(t.amount).toLocaleString()}</b><div class="text-[11px]">${usersMap[t.user_id]||t.user_id.slice(0,8)} • ${t.description||''}</div></div><div class="text-[9px] text-right">${new Date(t.created_at).toLocaleString()}<br><span class="bg-zinc-800 px-2 py-1 rounded">${t.status||'ok'}</span></div></div>`).join('')||'<div class="text-zinc-500 p-4 text-center">No transactions yet - fund a user to create first tx</div>';
+ $('list').innerHTML=filtered.map(t=>`<div class="flex justify-between bg-black p-3 rounded-xl mb-2 border-l-4 ${t.type==='credit'?'border-green-500': t.status==='failed'?'border-yellow-500':'border-red-500'}"><div><b class="${t.type==='credit'?'text-green-400': t.status==='failed'?'text-yellow-400':'text-red-300'}">${(t.type||'').toUpperCase()} ₦${Number(t.amount).toLocaleString()}</b><div class="text-[11px]">${usersMap[t.user_id]||t.user_id.slice(0,8)} • ${t.description||''}</div></div><div class="text-[9px] text-right">${new Date(t.created_at).toLocaleString()}<br><span class="bg-zinc-800 px-2 py-1 rounded">${t.status||'ok'}</span></div></div>`).join('')||'<div class="text-zinc-500 p-4 text-center">No transactions</div>';
+
+ $('usersList').innerHTML=allWallets.map(w=>{
+   let email=usersMap[w.user_id]||w.user_id.slice(0,8);
+   return `<div onclick="document.getElementById('fEmail').value='${email}'" class="flex justify-between bg-black p-2 rounded-lg mb-1 cursor-pointer hover:bg-zinc-800"><span class="truncate w-[150px]">${email}</span><b class="text-violet-300">₦${Number(w.balance).toLocaleString()}</b></div>`;
+ }).join('')||'No wallets';
+
+ $('tickets').innerHTML=allTickets.map(t=>`<div class="bg-black p-2 rounded-lg mb-2"><div class="font-bold">${usersMap[t.user_id]||t.email}</div><div class="opacity-70">${t.issue}</div><div class="text-[9px] opacity-50">${new Date(t.created_at).toLocaleString()}</div></div>`).join('')||'No tickets';
 }
 async function fund(dir){
  let em=$('fEmail').value.trim(), amt=Number($('fAmt').value); if(!em||!amt) return alert('email + amount needed');
- let uid=em.includes('@')? allUsers.find(u=>u.email.toLowerCase()===em.toLowerCase())?.id : em;
- if(!uid) return alert('User not found - Connect first');
+ let uid=allUsers.find(u=>u.email.toLowerCase()===em.toLowerCase())?.id || em;
+ if(!usersMap[uid] &&!em.includes('@')) return alert('User not found');
  try{
    let {data:wal} = await adm.from('wallets').select('*').eq('user_id',uid).maybeSingle();
    let newBal = dir>0? (Number(wal?.balance||0)+amt) : Math.max(0,Number(wal?.balance||0)-amt);
    if(!wal) await adm.from('wallets').insert({user_id:uid,balance:newBal});
    else await adm.from('wallets').update({balance:newBal, updated_at:new Date().toISOString()}).eq('user_id',uid);
-   await adm.from('transactions').insert({user_id:uid,type:dir>0?'credit':'debit',amount:amt,description: dir>0?'HQ V6.2 Credit':'HQ V6.2 Debit'});
+   await adm.from('transactions').insert({user_id:uid,type:dir>0?'credit':'debit',amount:amt,description: dir>0?'HQ V7 Manual Credit - Paystack Starter':'HQ V7 Debit'});
    alert((dir>0?'Credited ':'Debited ')+'₦'+amt); await loadAll();
  }catch(e){ alert(e.message); $('err').textContent=e.message; }
 }
 function exportCSV(){
   if(!allTxs.length) return alert('No tx');
-  let csv='email,type,amount,description,date\n'+allTxs.map(t=>`"${usersMap[t.user_id]||''}",${t.type},${t.amount},"${(t.description||'').replace(/"/g,'')}",${t.created_at}`).join('\n');
-  let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='tx_'+Date.now()+'.csv'; a.click();
+  let csv='email,type,amount,description,date,status\n'+allTxs.map(t=>`"${usersMap[t.user_id]||''}",${t.type},${t.amount},"${(t.description||'').replace(/"/g,'')}",${t.created_at},${t.status}`).join('\n');
+  let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='emma_tx_'+Date.now()+'.csv'; a.click();
 }
 </script></body></html>
